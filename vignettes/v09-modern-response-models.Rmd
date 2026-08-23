@@ -15,13 +15,13 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 src_file <- "
 31-generalized-hierarchical-and-bayesian-mixture-models.md
 "
-# Find the package root by walking up from getwd() until DESCRIPTION is found
-pkg_root <- getwd()
-while (pkg_root != dirname(pkg_root)) {
-  if (file.exists(file.path(pkg_root, "DESCRIPTION"))) break
-  pkg_root <- dirname(pkg_root)
+# Locate the monograph file via the installed package directory.
+pkg_dir <- dirname(system.file("DESCRIPTION", package = "mixRSMflow"))
+if (nzchar(pkg_dir)) {
+  src <- file.path(pkg_dir, "monographs", src_file)
+} else {
+  src <- ""
 }
-src <- file.path(pkg_root, "inst", "monographs", src_file)
 if (nzchar(src) && file.exists(src)) {
   cat(readLines(src, warn = FALSE, encoding = "UTF-8"), sep = "\n")
 } else {
