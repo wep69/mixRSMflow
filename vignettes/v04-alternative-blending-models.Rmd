@@ -15,6 +15,12 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 src <- system.file("monographs", "
 26-alternative-blending-models.md
 ", package = "mixRSMflow")
+if (!nzchar(src)) {
+  src <- file.path("inst", "monographs", "
+26-alternative-blending-models.md
+")
+  if (!file.exists(src)) src <- ""
+}
 if (nzchar(src)) {
   cat(readLines(src, warn = FALSE, encoding = "UTF-8"), sep = "\n")
 } else {
