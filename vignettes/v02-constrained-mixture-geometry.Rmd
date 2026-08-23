@@ -12,14 +12,17 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r include-extended, results='asis', echo=FALSE}
-src <- system.file("monographs", "
+src_file <- "
 24-constrained-mixture-geometry-and-pseudocomponents.md
-", package = "mixRSMflow")
-if (!nzchar(src)) {
-  src <- file.path("inst", "monographs", "
-24-constrained-mixture-geometry-and-pseudocomponents.md
-")
-  if (!file.exists(src)) src <- ""
+"
+monographs_dirs <- c(
+  system.file("monographs", package = "mixRSMflow"),
+  file.path("..", "inst", "monographs")
+)
+src <- ""
+for (d in monographs_dirs) {
+  candidate <- file.path(d, src_file)
+  if (file.exists(candidate)) { src <- candidate; break }
 }
 if (nzchar(src)) {
   cat(readLines(src, warn = FALSE, encoding = "UTF-8"), sep = "\n")
