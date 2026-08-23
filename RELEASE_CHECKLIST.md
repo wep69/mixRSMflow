@@ -1,0 +1,32 @@
+# Release checklist
+
+- [x] Scientific scope defined.
+- [x] Dated state-of-the-art comparison written.
+- [x] Package architecture and public API implemented.
+- [x] Capability registry implemented.
+- [x] Core and advanced source modules implemented.
+- [x] Optional backend routing isolated.
+- [x] All 47 public functions documented with examples.
+- [x] 22 layered vignettes included.
+- [x] Reference and software metadata audits included.
+- [x] Frozen test/simulation inputs included.
+- [x] Static structural audit passes.
+- [x] Static named-argument API audit passes.
+- [x] Static Rd/source-formal audit passes.
+- [x] Methodological source gates documented.
+- [x] Offline/local validation workflow supplied.
+- [x] CI source supplied.
+- [x] Replace maintainer placeholder with a real routable address.
+- [x] Run roxygen2 in R and inspect generated NAMESPACE/Rd diff.
+- [x] Run all examples.
+- [x] Run `testthat`.
+- [x] Render all vignettes.
+- [x] Exercise optional backends intended for the release tier.
+- [x] Install into a clean temporary R library.
+- [x] Run frozen validation battery and inspect numerical tolerances.
+- [ ] Build pkgdown site.
+- [x] Run `R CMD build`.
+- [x] Run `R CMD check --as-cran` and manually review output.
+- [ ] Refresh dated CRAN/PyPI and bibliographic metadata.
+- [x] Every public function has >= 3 examples in the manual and in the vignettes.
+- [ ] Only then label the package release-ready.

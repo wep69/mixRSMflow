@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, cite the software release and the methodological references relevant to the methods used."
+title: "mixRSMflow: Integrated Design, Modeling, Optimization and Visualization for Mixture Experiments"
+type: software
+version: 0.1.0.9000
+authors:
+  - family-names: "Pereira"
+    given-names: "Walter Esfrain"
+    email: "walterufpb@yahoo.com.br"
+  - family-names: "Martinez"
+    given-names: "Magali Haidee Pereira"
+license: MIT

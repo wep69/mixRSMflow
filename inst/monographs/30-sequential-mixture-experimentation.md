@@ -1,0 +1,917 @@
+# mixRSMflow: Sequential Mixture Experimentation and Bayesian Optimization
+
+**Extended instructional vignette**  
+**Package:** `mixRSMflow`  
+**Version targeted:** `0.1.0.9000`  
+**Extended vignette:** 30  
+**Format:** Markdown source only  
+**Primary ownership:** sequential augmentation after an initial experiment, information-based D/I/G augmentation, optimum-focused augmentation, response-adaptive experimentation, Gaussian-process Bayesian optimization, exploration/exploitation, stopping decisions, and reproducible staged experiments  
+**Companion material:** `17-sequential-design.Rmd`, `18-modern-models.Rmd`; Extended Vignette 25 owns full optimality theory and 29 owns optimum-location bootstrap inference
+
+> This document is intentionally supplied as `.md`. Sequential experimentation can alter the data-collection process in response to earlier outcomes. Record every stage, seed, decision rule, and candidate region.
+
+> **Scope boundary.** This extended vignette owns the topic named in its title. Closely related methods that belong to another extended vignette are referenced rather than re-taught. This separation is deliberate so that the extended documentation remains deep without becoming repetitive.
+
+---
+
+## 1. Why ask "what should we run next?"
+
+Classical experimental design assumes that a complete run plan can often be chosen before observing outcomes. That is ideal when the experiment is inexpensive, parallelizable, and must preserve a simple pre-specified inferential structure.
+
+In many modern formulation studies, however, each run may be expensive:
+
+- hyperspectral characterization;
+- controlled-environment growth studies;
+- long storage/stability assays;
+- high-cost chemical synthesis;
+- destructive biochemical analyses;
+- field plots requiring substantial space.
+
+In such cases a staged experiment can be more efficient.
+
+The central principle is:
+
+**Use sequential adaptation only when it solves a real resource or information problem, and preserve a complete record of why each new run was chosen.**
+
+---
+
+## 2. Learning objectives
+
+After this vignette, the reader should be able to:
+
+1. distinguish a one-shot design from a staged design;
+2. augment an existing design for D, I, or G information without using outcomes;
+3. augment around the current fitted optimum to reduce local decision uncertainty;
+4. explain the inferential difference between outcome-independent and response-adaptive augmentation;
+5. create a staged run history with explicit seeds;
+6. decide when a Gaussian-process surrogate is scientifically plausible;
+7. run optional Bayesian optimization with `mix_bo()`;
+8. explain exploration versus exploitation;
+9. interpret Expected Improvement, Probability of Improvement, and UCB conceptually even when backend details are handled by the GP layer;
+10. verify that every proposed point satisfies mixture constraints;
+11. choose practical stopping criteria;
+12. compare classical augmentation with response-adaptive Bayesian optimization;
+13. avoid adaptive overfitting to noisy early responses;
+14. preserve reproducibility across sequential batches.
+
+---
+
+## 3. Function map
+
+| Stage | Function |
+|:--|:--|
+| Initial classical/optimal design | `mix_design()`, `mix_optimal_design()` |
+| Evaluate initial information | `mix_design_eval()` |
+| Add D/I/G runs | `mix_augment()` |
+| Fit current response | `mix_fit()` |
+| Current optimum | `mix_optimize()` |
+| Add optimum-focused runs | `mix_augment(objective="optimum_uncertainty")` |
+| Gaussian-process Bayesian optimization | `mix_bo()` |
+| Audit/provenance | `mix_audit_trail()` |
+
+---
+
+# Part I. Two types of sequential experimentation
+
+## 4. Outcome-independent augmentation
+
+New runs are chosen from the design geometry and intended model, without using observed responses.
+
+Examples:
+
+- increase D-information;
+- reduce average prediction variance;
+- reduce maximum prediction variance;
+- restore rank after lost runs.
+
+This is closest to classical optimal design.
+
+---
+
+## 5. Outcome-adaptive augmentation
+
+New runs depend on the current fitted response.
+
+Examples:
+
+- reduce uncertainty near the current optimum;
+- sample a promising region;
+- discriminate between response-surface peaks;
+- Gaussian-process Bayesian optimization.
+
+Because data influence future design points, the full sequential rule should be documented.
+
+---
+
+# Part II. Stage 0: define the immutable scientific region
+
+## 6. Fix feasibility before observing outcomes
+
+```r
+library(mixRSMflow)
+
+sp <- mix_spec(
+  c("A", "B", "C"),
+  lower = c(0.05, 0.05, 0.05),
+  upper = c(0.85, 0.85, 0.85)
+)
+```
+
+The feasible region should not expand or shrink in response to convenient early outcomes unless an independent scientific reason justifies the change.
+
+This protects against moving the goalposts.
+
+---
+
+# Part III. Stage 1: initial design
+
+## 7. Prediction-oriented initial design
+
+```r
+d0 <- mix_optimal_design(
+  sp,
+  model = "scheffe_quadratic",
+  runs = 8,
+  criterion = "I",
+  algorithm = "hybrid",
+  seed = 30001
+)
+```
+
+Evaluate:
+
+```r
+E0 <- mix_design_eval(
+  d0,
+  model = "scheffe_quadratic",
+  resolution = 20
+)
+
+E0
+mix_plot(E0, "fds")
+```
+
+### Why not start with too few points?
+
+An adaptive algorithm cannot rescue a hopelessly underidentified starting model without consequences. The initial stage should provide enough region coverage to estimate a plausible baseline surface or surrogate.
+
+---
+
+# Part IV. Information-based augmentation
+
+## 8. Add I-oriented runs before seeing outcomes
+
+Suppose budget becomes available for three additional formulations before response measurement.
+
+```r
+d1_I <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "I",
+  resolution = 20,
+  seed = 30101
+)
+```
+
+Compare:
+
+```r
+E1_I <- mix_design_eval(
+  d1_I,
+  model = "scheffe_quadratic",
+  resolution = 20
+)
+
+E0$measures
+E1_I$measures
+```
+
+---
+
+## 9. D-oriented augmentation
+
+```r
+d1_D <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "D",
+  seed = 30102
+)
+```
+
+---
+
+## 10. G-oriented augmentation
+
+```r
+d1_G <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "G",
+  seed = 30103
+)
+```
+
+### Boundary with Extended Vignette 25
+
+This vignette uses D/I/G as sequential objectives. Their full mathematical interpretation and FDS/VDG comparison are owned by Extended Vignette 25.
+
+---
+
+# Part V. Observe Stage 1 outcomes
+
+## 11. Teaching response
+
+```r
+set.seed(30201)
+
+stage1 <- d0$data
+
+stage1$response <- with(
+  stage1,
+  5 * A + 7 * B + 6 * C +
+  3 * A * B -
+  2 * A * C +
+  rnorm(nrow(stage1), 0, 0.15)
+)
+```
+
+Fit:
+
+```r
+fit1 <- mix_fit(
+  "response",
+  stage1,
+  d0,
+  model = "scheffe_quadratic"
+)
+
+mix_diagnose(fit1)
+```
+
+The response simulation is a teaching example only.
+
+---
+
+# Part VI. Optimum-focused augmentation
+
+## 12. Find the current optimum
+
+```r
+op1 <- mix_optimize(
+  fit1,
+  goal = "maximize",
+  method = "hybrid",
+  seed = 30202
+)
+
+op1
+```
+
+### 12.1 Add points to reduce local optimum uncertainty
+
+```r
+d_opt <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "optimum_uncertainty",
+  fit = fit1,
+  resolution = 20,
+  seed = 30203
+)
+
+mix_plot(d_opt)
+```
+
+### Interpretation
+
+This is response-adaptive because `fit1` depends on observed outcomes.
+
+State that fact explicitly in the methods.
+
+---
+
+# Part VII. Why not always focus near the current optimum?
+
+## 13. Early exploitation can be risky
+
+If Stage 1 is noisy, the current apparent optimum may be wrong. Adding all new points around it can trap the experiment in a local region and leave alternative peaks unexplored.
+
+A good sequential strategy balances:
+
+- exploration of uncertain regions;
+- exploitation of promising regions;
+- model discrimination;
+- practical run costs.
+
+This trade-off motivates Gaussian-process Bayesian optimization.
+
+---
+
+# Part VIII. Gaussian-process surrogate models
+
+## 14. Surrogate concept
+
+A Gaussian Process treats the unknown response function as a smooth stochastic surface. Given observed points, it produces:
+
+- predicted mean response;
+- predictive uncertainty;
+- correlation across nearby candidate mixtures.
+
+An acquisition rule combines the mean and uncertainty to propose the next experiment.
+
+### Important distinction
+
+The GP surrogate is not a Scheffé polynomial. It is an alternative modeling layer for sequential search.
+
+Use it when flexible local prediction is more important than interpreting classical mixture coefficients.
+
+---
+
+## 15. Optional `mix_bo()` workflow
+
+```r
+if (FALSE) {
+  # Requires DiceKriging.
+  bo <- mix_bo(
+    data = stage1,
+    response = "response",
+    spec = sp,
+    goal = "maximize",
+    iterations = 5,
+    candidate_n = 5000,
+    nugget = 1e-8,
+    seed = 30301
+  )
+
+  bo
+}
+```
+
+`mix_bo()` keeps candidate points inside the declared mixture specification.
+
+---
+
+# Part IX. Exploration and exploitation
+
+## 16. Expected Improvement
+
+Conceptually, Expected Improvement favors candidates that have a meaningful chance of exceeding the current best response and rewards both high predicted mean and useful uncertainty.
+
+It can be effective when locating a maximum is the primary goal.
+
+---
+
+## 17. Probability of Improvement
+
+Probability of Improvement focuses more directly on the chance of beating the current best threshold.
+
+It can become overly exploitative depending on the threshold definition.
+
+---
+
+## 18. Upper Confidence Bound
+
+UCB-style criteria add an uncertainty bonus to the predicted mean. A tuning factor controls the exploration/exploitation balance.
+
+### Reporting rule
+
+If a specific acquisition function or tuning parameter is exposed by the backend workflow, report it. Do not describe all Bayesian optimization runs simply as "the GP chose the next point."
+
+---
+
+# Part X. Stopping decisions
+
+## 19. Stop for scientific, not cosmetic, reasons
+
+Possible stopping criteria include:
+
+- fixed total run budget reached;
+- expected improvement below a practical threshold;
+- near-optimal region sufficiently narrow;
+- prediction uncertainty below an experimental target;
+- no meaningful improvement across several iterations;
+- operational deadline or material exhaustion.
+
+A stopping rule chosen only after seeing an attractive maximum is susceptible to optimism.
+
+---
+
+# Part XI. Staged agronomic example with hyperspectral phenotyping
+
+## 20. Scientific problem
+
+A three-component foliar formulation will be evaluated using an expensive hyperspectral and physiological pipeline. Only 15 formulations can be tested initially, with the possibility of five additional runs.
+
+### Stage 0: feasibility
+
+```r
+sp_hsi <- mix_spec(
+  c("Amino", "Seaweed", "Humic"),
+  lower = c(0.05, 0.05, 0.05),
+  upper = c(0.80, 0.80, 0.80)
+)
+```
+
+### Stage 1: eight-run initial design for this teaching example
+
+```r
+d0 <- mix_optimal_design(
+  sp_hsi,
+  model = "scheffe_quadratic",
+  runs = 8,
+  criterion = "I",
+  algorithm = "hybrid",
+  seed = 30401
+)
+```
+
+### Stage 2: observe response
+
+```r
+set.seed(30402)
+
+dat1 <- d0$data
+
+dat1$index <- with(
+  dat1,
+  50 + 8 * Amino + 12 * Seaweed + 6 * Humic +
+  5 * Amino * Seaweed +
+  rnorm(nrow(dat1), 0, 1.0)
+)
+```
+
+### Stage 3: fit and diagnose
+
+```r
+f1 <- mix_fit(
+  "index",
+  dat1,
+  d0,
+  "scheffe_quadratic"
+)
+
+mix_diagnose(f1)
+```
+
+### Stage 4A: design-based addition
+
+```r
+d_info <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "I",
+  seed = 30403
+)
+```
+
+### Stage 4B: response-focused addition
+
+```r
+d_peak <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "optimum_uncertainty",
+  fit = f1,
+  seed = 30404
+)
+```
+
+### Stage 4C: GP route
+
+```r
+if (FALSE) {
+  bo <- mix_bo(
+    dat1,
+    response = "index",
+    spec = sp_hsi,
+    goal = "maximize",
+    iterations = 3,
+    candidate_n = 5000,
+    seed = 30405
+  )
+}
+```
+
+### Decision
+
+Compare the scientific objective:
+
+- if accurate global prediction remains important, prefer information-based augmentation;
+- if the next decision depends specifically on the current maximum, optimum-focused augmentation may be useful;
+- if each response arrives sequentially and the response shape may not be well described by the current polynomial, GP Bayesian optimization can be considered.
+
+---
+
+# Part XII. Sequential reproducibility
+
+## 21. Preserve stage IDs
+
+A real dataset should contain a column such as:
+
+```text
+stage
+```
+
+or
+
+```text
+batch_of_acquisition
+```
+
+Do not discard the distinction between initial and adaptively selected runs.
+
+---
+
+## 22. Preserve algorithm metadata
+
+At every stage record:
+
+- package version;
+- mixture specification;
+- current dataset hash/version;
+- model used for adaptation;
+- acquisition or augmentation objective;
+- candidate count/resolution;
+- seed;
+- selected points;
+- reason for stopping or continuing.
+
+`mix_audit_trail()` helps with package-level provenance but should be complemented by project-level records.
+
+---
+
+# Part XIII. Inference after adaptive design
+
+## 23. Why inferential interpretation deserves caution
+
+If later design points are selected because of earlier responses, the final dataset is not identical to a fixed design chosen independently of outcomes.
+
+For pure prediction and optimization this may be acceptable and useful. For formal frequentist claims, adaptive sampling can complicate standard inference.
+
+The package does not silently certify all classical p-values as unaffected by response-adaptive design.
+
+Report the sequential process transparently and use appropriate methodological support when confirmatory inference is the objective.
+
+---
+
+# Part XIV. Common mistakes
+
+## 24. Starting BO with too little region coverage
+
+The surrogate needs informative initial data.
+
+---
+
+## 25. Focusing every new point near the current best
+
+This can miss unexplored peaks.
+
+---
+
+## 26. Changing mixture bounds because early data are inconvenient
+
+Feasibility should normally be fixed independently of outcomes.
+
+---
+
+## 27. Using no seed for stochastic stages
+
+Sequential reproducibility requires seeds.
+
+---
+
+## 28. Hiding which runs were adaptively selected
+
+Keep stage provenance.
+
+---
+
+## 29. Calling Bayesian optimization "Bayesian inference on Scheffé coefficients"
+
+It is a surrogate-based sequential optimization workflow.
+
+---
+
+## 30. Continuing until the response looks impressive
+
+Predefine a run budget or meaningful stopping logic.
+
+---
+
+# Part XV. Function-selection guide
+
+| Sequential goal | Function |
+|:--|:--|
+| Improve parameter information | `mix_augment(objective="D")` |
+| Improve average prediction | `mix_augment(objective="I")` |
+| Improve worst-case prediction | `mix_augment(objective="G")` |
+| Focus near current optimum | `mix_augment(objective="optimum_uncertainty", fit=...)` |
+| Flexible GP sequential search | `mix_bo()` |
+| Full D/I/G theory | Extended Vignette 25 |
+| Quantify current optimum location uncertainty | Extended Vignette 29 |
+
+---
+
+# Part XVI. Reporting checklist
+
+- [ ] fixed feasible region;
+- [ ] initial design and criterion;
+- [ ] initial sample size;
+- [ ] stage identifiers;
+- [ ] response observed before each adaptive step;
+- [ ] model used at each stage;
+- [ ] augmentation objective;
+- [ ] GP backend if used;
+- [ ] candidate-set size;
+- [ ] acquisition function/settings if applicable;
+- [ ] seed at every stochastic step;
+- [ ] points proposed and actually executed;
+- [ ] deviations from the proposed sequence;
+- [ ] stopping rule;
+- [ ] total run count;
+- [ ] distinction between preplanned and adaptive runs;
+- [ ] implications for confirmatory inference;
+- [ ] audit trail and session information.
+
+---
+
+# Appendix A. Compact staged-design script
+
+```r
+library(mixRSMflow)
+
+sp <- mix_spec(c("A", "B", "C"))
+
+d0 <- mix_optimal_design(
+  sp,
+  "scheffe_quadratic",
+  runs = 8,
+  criterion = "I",
+  algorithm = "hybrid",
+  seed = 20260813
+)
+
+E0 <- mix_design_eval(d0)
+print(E0)
+
+# Information-only augmentation before outcomes.
+d1 <- mix_augment(
+  d0,
+  n_new = 3,
+  model = "scheffe_quadratic",
+  objective = "I",
+  seed = 20260814
+)
+
+# After observed responses are entered:
+# fit1 <- mix_fit("response", observed_data, d0, "scheffe_quadratic")
+# d2 <- mix_augment(d0, n_new=3, model="scheffe_quadratic",
+#                   objective="optimum_uncertainty", fit=fit1, seed=20260815)
+```
+
+---
+
+# Appendix B. Boundary with other extended vignettes
+
+This vignette owns staged data acquisition. It does not re-teach D/I/G mathematics (25), multiresponse desirability (28), optimum bootstrap uncertainty (29), general Bayesian response fitting (31), figure engineering (32), or software release validation (33).
+
+---
+
+# Final perspective
+
+Sequential experimentation is most valuable when every new run is expensive enough that learning from earlier stages justifies the added methodological complexity.
+
+A defensible sequence is:
+
+**fixed feasible region -> informative initial design -> observed response -> diagnostics -> explicit augmentation/acquisition rule -> next stage -> stopping rule -> full provenance.**
+
+
+---
+
+# Appendix C. Advanced sequential laboratories
+
+## C1. Laboratory: outcome-independent versus outcome-adaptive addition
+
+Start from the same eight-run design. Add three runs using I-optimal augmentation **before** responses and three using optimum-focused augmentation **after** fitting responses. Compare where the new points fall.
+
+### Lesson
+
+The first set improves global information under the declared model. The second set uses observed data and therefore targets the current decision region. They answer different sequential questions.
+
+---
+
+## C2. Laboratory: early-noise trap
+
+Simulate a noisy Stage 1 where the apparent best point is far from the true maximum. Apply optimum-focused augmentation and show how it can overexploit the wrong region.
+
+Then repeat with global I-augmentation or GP exploration.
+
+### Interpretation
+
+Adaptive design can amplify early noise. Exploration is not wasted effort; it protects against premature certainty.
+
+---
+
+## C3. Laboratory: staged stopping
+
+Define a maximum budget of 20 runs. After each stage, record:
+
+- best predicted response;
+- maximum prediction variance;
+- near-optimal region size;
+- expected improvement or analogous acquisition value;
+- number of runs used.
+
+Create a stopping table and identify which criterion would stop first.
+
+---
+
+## C4. Laboratory: proposal feasibility
+
+For every point proposed by `mix_bo()` or `mix_augment()`, check:
+
+```r
+abs(rowSums(proposals[, sp$components]) - sp$total)
+```
+
+plus all bounds and linear restrictions.
+
+A sequential optimizer that proposes impossible mixtures is scientifically unusable even if its surrogate mathematics is otherwise correct.
+
+---
+
+# Appendix D. Sequential troubleshooting matrix
+
+| Symptom | Likely issue | Response |
+|:--|:--|:--|
+| new points duplicate existing runs | criterion favors replication | decide whether replication is acceptable |
+| optimum-focused points cluster too tightly | overexploitation | add global information/exploration |
+| GP proposal jumps to boundary | high uncertainty or predicted mean | inspect acquisition logic and feasibility |
+| Stage 1 model rank deficient | initial design too small | repair design before adaptive inference |
+| BO changes with seed | stochastic candidate search | report/repeat seeds |
+| little improvement after many runs | plateau/noise/model mismatch | apply stopping rule or reconsider surrogate |
+| adaptive and preplanned analyses disagree | sampling path matters | report stage structure and inferential caveat |
+| proposed run operationally impossible | process constraints missing | add operational design restrictions |
+
+---
+
+# Appendix E. Guided sequential exercises
+
+### Exercise 1. Initial design size
+
+Compare 6-, 8-, 10-, and 12-run initial designs for a quadratic model. Determine the minimum that gives stable baseline fitting.
+
+### Exercise 2. D/I/G augmentation
+
+From one design, add two runs under each objective. Compare new-point locations and design metrics.
+
+### Exercise 3. Lost run
+
+Simulate one failed experiment after Stage 1. Use augmentation to restore information without repeating the failed composition automatically.
+
+### Exercise 4. Optimum focus
+
+Use `objective="optimum_uncertainty"` after fitting. Explain why the selected points are outcome-dependent.
+
+### Exercise 5. Exploration budget
+
+Reserve one of four new runs for global exploration and three for local exploitation. Explain the logic before seeing new outcomes.
+
+### Exercise 6. GP candidate count
+
+Run BO with several `candidate_n` values. Assess stability of the proposed next composition.
+
+### Exercise 7. Nugget sensitivity
+
+Change the GP nugget and explain how assumed observation noise affects surrogate smoothness and acquisition behavior.
+
+### Exercise 8. Stopping rule
+
+Define a practical expected-improvement or response-regret threshold before running the sequential simulation.
+
+### Exercise 9. Stage provenance
+
+Design a data schema with columns `stage`, `proposal_method`, `seed`, `planned`, `executed`, and `reason_not_executed`.
+
+### Exercise 10. Confirmatory stage
+
+After exploratory BO, design a small independent confirmatory batch around the selected region. Explain why this can strengthen evidence.
+
+### Exercise 11. Resource accounting
+
+Add run costs and compare a 15-run one-shot design with an 8+4+3 staged design.
+
+### Exercise 12. Reviewer exercise
+
+A paper says “five additional points were selected adaptively” without the rule. Draft the information needed to reproduce the adaptive path.
+
+---
+
+# Appendix F. Reviewer-style sequential audit
+
+Require:
+
+1. initial design;
+2. fixed feasible region;
+3. stage sizes;
+4. exact adaptation objective;
+5. response model/surrogate at every stage;
+6. candidate generation;
+7. acquisition settings;
+8. random seeds;
+9. proposed versus executed points;
+10. stopping rule;
+11. whether confirmatory inference used adaptively selected data;
+12. full stage provenance.
+
+---
+
+# Appendix G. Interpretation language templates
+
+### Information-only augmentation
+
+> Additional runs were selected without reference to observed responses, using I-oriented augmentation to improve average prediction precision of the pre-specified quadratic mixture model.
+
+### Response-adaptive augmentation
+
+> After Stage 1 responses were analyzed, the next formulations were selected to reduce uncertainty near the current fitted optimum. Because the design depended on earlier outcomes, the sequential selection rule and stage structure are reported explicitly.
+
+### Bayesian optimization
+
+> A Gaussian-process surrogate was updated sequentially and candidate formulations were proposed within the fixed feasible mixture region. The procedure was used for efficient search rather than for direct inference on Scheffé coefficients.
+
+### Stopping
+
+> Sequential experimentation stopped when the pre-specified run budget was reached and the expected improvement from additional formulations fell below the practical response threshold.
+
+
+---
+
+# Appendix H. Applied sequential case bank
+
+## H1. Expensive hyperspectral calibration
+
+Each formulation requires destructive chemistry plus hyperspectral imaging. An eight-run I-optimal initial design provides broad support. After Stage 1, three additional runs may either improve global prediction or focus on the current optimum. Because the measurements are expensive, the staged design has clear operational value. Every proposed and executed formulation should be archived with stage and seed.
+
+## H2. Long-term storage stability
+
+A formulation takes three months to evaluate. Running all candidates at once is costly. A staged strategy can first screen broad composition space, then add formulations near promising stability regions. However, the long delay may favor batch augmentation rather than one-run-at-a-time BO. Sequential design should reflect the real feedback cycle.
+
+## H3. Early noisy biological response
+
+Greenhouse response is highly variable. If early observations are noisy, local optimum-focused augmentation can chase a false peak. Reserve some new runs for global prediction or uncertainty reduction. This case demonstrates why exploration is not merely computational theory but protection against biological noise.
+
+## H4. Production-line BO
+
+A manufacturing formulation can be tested sequentially with automated response measurement. GP Bayesian optimization becomes operationally realistic because each run can inform the next. The feasibility region remains fixed, and the acquisition rule should be logged. A final independent confirmatory batch can separate exploratory search from confirmatory performance assessment.
+
+## H5. Sequential model discrimination
+
+After an initial quadratic design, residuals suggest possible higher-order blending. Rather than immediately adding a complex model with weak information, new runs can be placed where the quadratic and alternative model differ most. This is a sequential design-discrimination problem rather than an optimum-search problem.
+
+---
+
+# Appendix I. Short-answer sequential review
+
+1. **What makes augmentation outcome-independent?** New points are chosen without using observed responses.
+2. **What makes a design response-adaptive?** Earlier outcomes influence later run locations.
+3. **Why store stage labels?** To reconstruct the adaptive sampling path.
+4. **What is exploration?** Sampling uncertain or poorly covered regions.
+5. **What is exploitation?** Sampling where high response is currently predicted.
+6. **Why can early exploitation fail?** Noise can create a false apparent optimum.
+7. **What does a GP surrogate add?** Flexible mean and uncertainty over the feasible region.
+8. **What should define stopping?** Pre-specified budget or meaningful information/improvement threshold.
+9. **Why confirm after BO?** Independent confirmation strengthens evidence after exploratory adaptive search.
+10. **What never changes silently?** The declared scientific feasibility constraints.
+
+
+---
+
+# Appendix J. Deeper conceptual notes on adaptive science
+
+## J1. Sequential efficiency has a cost: path dependence
+
+A fixed design is chosen independently of outcomes. An adaptive design depends on the response path. Two experiments starting from the same region can select different later runs because early noise differs. This path dependence is precisely what creates efficiency, but it also complicates simple confirmatory interpretations. Preserve the sequence and avoid presenting the final run set as though it had been preplanned.
+
+## J2. Batch versus one-at-a-time adaptation
+
+Many agricultural experiments return outcomes only after weeks or months. In such cases, one-at-a-time Bayesian optimization may be unrealistic. Batch augmentation is often more practical: select several informative points, execute them together, update the model after the batch, and repeat. The methodological framework should match the temporal structure of feedback.
+
+## J3. Exploration as insurance
+
+Exploration samples uncertain regions even when their current mean prediction is not high. In noisy biological systems this can prevent premature commitment to a false optimum. The value of exploration increases when the surrogate or polynomial is uncertain and when multiple peaks are plausible.
+
+## J4. Stopping is a decision rule
+
+A sequential experiment can continue indefinitely if the only criterion is “perhaps the next run improves the response.” Predefine a budget, minimum expected improvement, acceptable prediction variance, or uncertainty-region target. Stopping rules are part of reproducibility and should appear in the methods.
+
+## J5. Exploratory versus confirmatory stages
+
+A practical strategy is to use adaptive search for exploration and then reserve an independent confirmatory stage for the selected region. This separation can strengthen scientific communication: the adaptive algorithm finds promising formulations, while the confirmatory stage tests them under a pre-specified protocol.

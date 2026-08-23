@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "r_runtime_validation": "NOT_RUN",
+  "counts": {
+    "exports": 47,
+    "s3_methods": 29,
+    "r_definitions": 146,
+    "vignettes": 22,
+    "test_files": 8,
+    "rd_aliases": 78
+  },
+  "checks": {
+    "description_missing_fields": [],
+    "delimiter_failures": [],
+    "exports_without_definitions": [],
+    "s3_without_definitions": [],
+    "namespace_entries_without_rd_alias": [],
+    "namespace_calls_undeclared": [],
+    "missing_required_files": [],
+    "textbook_raw_markers_found": [],
+    "maintainer_placeholder_present": false
+  },
+  "limitations": [
+    "Static audit is not an R syntax/parser check.",
+    "No examples, tests, vignettes, package build, or R CMD check are executed by this script."
+  ]
+}

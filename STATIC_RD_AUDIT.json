@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "exports_checked": 47,
+  "issues": [],
+  "limitations": [
+    "Static textual comparison; roxygen2 regeneration and R parsing remain part of the runtime gate."
+  ]
+}

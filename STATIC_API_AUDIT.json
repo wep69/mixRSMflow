@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "checked_exported_calls": 595,
+  "checked_named_arguments": 721,
+  "unknown_named_argument_issues": [],
+  "limitations": [
+    "This is a static heuristic, not an R parser or runtime test.",
+    "Calls assembled programmatically may not be inspected."
+  ]
+}
