@@ -1,0 +1,27 @@
+name: pkgdown
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+jobs:
+  pkgdown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgdown
+          needs: website
+      - name: Build site locally in CI
+        shell: Rscript {0}
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgdown-site
+          path: _site
