@@ -18,6 +18,9 @@ jobs:
         with:
           extra-packages: any::pkgdown
           needs: check
+      - name: Install package from source
+        shell: Rscript {0}
+        run: install.packages(".", repos = NULL, type = "source")
       - name: Build site locally in CI
         shell: Rscript {0}
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
