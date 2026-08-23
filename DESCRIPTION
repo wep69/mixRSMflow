@@ -1,0 +1,53 @@
+Package: mixRSMflow
+Type: Package
+Title: Integrated Design, Modeling, Optimization and Visualization for Mixture Experiments
+Version: 0.1.0.9000
+Authors@R: c(
+    person("Walter Esfrain", "Pereira", email = "walterufpb@yahoo.com.br", role = c("aut", "cre", "cph")),
+    person("Magali Haidee Pereira", "Martinez", role = "aut")
+    )
+Description: Provides an integrated workflow for the design, analysis, diagnosis,
+    interpretation, optimization, uncertainty quantification, and visualization
+    of mixture experiments. The core includes simplex and constrained designs,
+    Scheffe and alternative blending models, mixture-process workflows, optimal
+    designs, prediction-variance diagnostics, multiresponse optimization,
+    optimum-location uncertainty, static vector graphics, and optional
+    interactive, mixed-effects, Bayesian, Gaussian-process, and Shiny backends.
+    The package emphasizes explicit mixture constraints, auditable decisions,
+    numerical diagnostics, and reproducible teaching and scientific workflows.
+License: MIT + file LICENSE
+URL: https://wep69.github.io/mixRSMflow/, https://github.com/wep69/mixRSMflow
+BugReports: https://github.com/wep69/mixRSMflow/issues
+Depends: R (>= 4.2.0)
+Imports:
+    ggplot2,
+    grDevices,
+    graphics,
+    grid,
+    rlang,
+    stats,
+    tools,
+    utils
+Suggests:
+    AlgDesign,
+    brms,
+    desirability2,
+    DiagrammeR,
+    DiceKriging,
+    ggtern,
+    knitr,
+    lme4,
+    nlme,
+    plotly,
+    rmarkdown,
+    shiny,
+    skpr,
+    Ternary,
+    testthat (>= 3.0.0),
+    vdiffr
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

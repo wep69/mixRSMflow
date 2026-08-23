@@ -1,0 +1,18 @@
+---
+title: "Publication graphics for mixture experiments"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Publication graphics for mixture experiments}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r include-extended, results='asis', echo=FALSE}
+src <- system.file("monographs", "32-publication-graphics-for-mixture-experiments.md", package = "mixRSMflow")
+if (nzchar(src)) cat(readLines(src, warn = FALSE, encoding = "UTF-8"), sep = "\n")
+else cat("**Extended tutorial not found.**\n")
+```

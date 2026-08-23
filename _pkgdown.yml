@@ -1,0 +1,41 @@
+url: https://wep69.github.io/mixRSMflow/
+template:
+  bootstrap: 5
+reference:
+- title: Specification and geometry
+  contents: [mix_spec, mix_region, mix_transform, mix_inverse_transform, mix_pseudocomponents, mix_vertices, mix_moments]
+- title: Designs
+  contents: [mix_design, mix_multiple_lattice, mix_categorized_design, mix_block_design, mix_latin_process_design, mix_fractionate_process, mix_optimal_design, mix_design_eval, mix_augment, mix_rotatability]
+- title: Models and inference
+  contents: [mix_basis, mix_gbm_term, mix_imse, mix_fit, mix_fit_gls, mix_fit_mixed, mix_fit_bayes, mix_segmented_fit, mix_anova, mix_diagnose, mix_collinearity, mix_compare, mix_reduce, mix_screen]
+- title: Prediction, effects, optimization
+  contents: [mix_predict, mix_effects, mix_optimize, mix_optimum_ci, mix_multi_fit, mix_multiopt, mix_biplot, mix_bo]
+- title: Graphics and reporting
+  contents: [mix_plot, mix_report, run_mixrsm_app, mix_capabilities, mix_audit_trail, mix_demo_data]
+- title: Additional utilities
+  contents: [mix_predict_segmented, mix_reparameterize]
+- title: S3 methods and package
+  contents: [as.data.frame.mix_design, coef.mix_fit, fitted.mix_fit, residuals.mix_fit,
+             vcov.mix_fit, summary.mix_fit, predict.mix_fit, predict.mix_segmented_fit,
+             plot.mix_design, plot.mix_fit, print.mix_bo, print.mix_collinearity,
+             print.mix_design, print.mix_design_evaluation, print.mix_diagnostics,
+             print.mix_effect, print.mix_fit, print.mix_fit_gls, print.mix_imse,
+             print.mix_multi_fit, print.mix_multiopt, print.mix_optimum,
+             print.mix_optimum_ci, print.mix_reduction, print.mix_report,
+             print.mix_rotatability, print.mix_segmented_fit, print.mix_spec,
+             print.summary.mix_fit, mixRSMflow-package]
+
+articles:
+- title: Tutorials
+  contents:
+  - v01-foundations-to-advanced-tutorial
+  - v02-constrained-mixture-geometry
+  - v03-optimal-mixture-design
+  - v04-alternative-blending-models
+  - v05-mixture-process-structured
+  - v06-multiple-responses-desirability
+  - v07-optimum-location-uncertainty
+  - v08-sequential-mixtures
+  - v09-modern-response-models
+  - v10-publication-graphics
+  - v11-validation-reproducibility
