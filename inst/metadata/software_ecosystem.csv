@@ -1,0 +1,12 @@
+software,ecosystem,version_or_status,verification_date,primary_scope,mixture_specific,optimal_design,interactive_or_special_graphics,optimum_uncertainty,notes,source
+mixexp,R/CRAN,"removed 2026-04-10; last archived 1.2.7.1",2026-08-13,"mixture design and analysis",yes,limited,ternary/effect plots,no,"Removed from CRAN after unresolved issues; retained only as historical comparator, not dependency",https://CRAN.R-project.org/package=mixexp
+AlgDesign,R/CRAN,1.2.1.2,2026-08-13,"algorithmic experimental design",partial,"D/A/I",no,no,"Strong general optimal-design backend; compiled code",https://CRAN.R-project.org/package=AlgDesign
+skpr,R/CRAN,1.9.2,2026-08-13,"optimal design generation/evaluation",yes,"D/I/A/Alias/G/T/E/custom","Shiny; FDS",no,"Supports mixture designs, augmentation, blocking and N-level split plots",https://CRAN.R-project.org/package=skpr
+Ternary,R/CRAN,2.3.7,2026-08-13,"ternary plotting",yes,no,"ternary interpolation/contours/Shiny",no,"Visualization-focused",https://CRAN.R-project.org/package=Ternary
+ggtern,R/CRAN,4.0.0,2026-08-13,"ggplot2 ternary grammar",yes,no,"ternary ggplot2",no,"Visualization-focused",https://CRAN.R-project.org/package=ggtern
+DoE.wrapper,R/CRAN,0.13,2026-08-13,"DoE wrapper",partial,"D via AlgDesign",no,no,"Unifies several general DoE generators but is not a comprehensive mixture workflow",https://CRAN.R-project.org/package=DoE.wrapper
+desirability2,R/CRAN,0.2.0,2026-08-13,"multiparameter desirability",no,no,no,no,"Generic Derringer-Suich desirability functions",https://CRAN.R-project.org/package=desirability2
+OptimaRegion,R/CRAN,1.2,2026-08-13,"confidence regions for response-surface optima",no,no,static regions,yes,"General RSM optimum-location uncertainty, not mixture-simplex specific",https://CRAN.R-project.org/package=OptimaRegion
+pyDOE2,Python/PyPI,"0.3.8; last release 2019",2026-08-13,"general DoE",no,no,no,no,"Current PyPI capability list covers factorial, BBD, CCD and LHS; it does not list mixture generators",https://pypi.org/project/pyDOE2/
+dexpy,Python/PyPI,0.12,2026-08-13,"DoE design construction",yes,"D-optimal",no,no,"Documentation includes simplex-lattice, simplex-centroid and mixture/optimal designs; PyPI last release 2017",https://pypi.org/project/dexpy/
+pyoptex,Python/PyPI,1.2.1,2026-08-13,"optimal DoE",yes,"custom/optimal",no,no,"Explicit mixture factors, constraints, augmentation, blocking, split-plot and cost-optimal designs",https://pypi.org/project/pyoptex/

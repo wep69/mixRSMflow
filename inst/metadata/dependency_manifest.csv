@@ -1,0 +1,25 @@
+package,role,required_at_runtime,feature
+R,Depends,yes,core
+ggplot2,Imports,yes,graphics
+rlang,Imports,yes,tidy-evaluation for graphics
+graphics,Imports,yes,base graphics
+grDevices,Imports,yes,graphics devices
+grid,Imports,yes,graphics
+stats,Imports,yes,statistical core
+tools,Imports,yes,package utilities
+utils,Imports,yes,utilities
+AlgDesign,Suggests,no,optimal-design interoperability
+brms,Suggests,no,Bayesian mixture models
+desirability2,Suggests,no,desirability interoperability
+DiceKriging,Suggests,no,Gaussian-process Bayesian optimization
+ggtern,Suggests,no,ternary interoperability
+knitr,Suggests,no,vignettes
+lme4,Suggests,no,mixed-effects models
+nlme,Suggests,no,GLS/correlated models
+plotly,Suggests,no,interactive graphics
+rmarkdown,Suggests,no,DOCX/PDF reports and vignettes
+shiny,Suggests,no,teaching interface
+skpr,Suggests,no,optimal-design interoperability
+Ternary,Suggests,no,ternary interoperability
+testthat,Suggests,no,tests
+vdiffr,Suggests,no,visual regression tests

@@ -1,0 +1,13 @@
+scenario_id,design,q,DGP,sample_size,seed,expected_behavior
+S01,unrestricted_simplex,3,scheffe_quadratic,15,2026081301,coefficient_recovery
+S02,replicated_simplex,3,scheffe_quadratic,30,2026081302,pure_error_lack_of_fit
+S03,moderate_bounds,3,scheffe_quadratic,18,2026081303,constraint_validity
+S04,severe_bounds,3,scheffe_quadratic,18,2026081304,conditioning_and_I_optimality
+S05,mixture_process,3,scheffe_quadratic_process,28,2026081305,interaction_recovery
+S06,model_misspecification,3,scheffe_special_cubic,21,2026081306,imse_bias_variance
+S07,optimum_interior,3,scheffe_quadratic,24,2026081307,optimum_location_coverage
+S08,optimum_boundary,3,scheffe_quadratic,24,2026081308,boundary_optimization
+S09,multiresponse_conflict,3,two_quadratic_responses,28,2026081309,pareto_and_desirability
+S10,gbm_special_case,3,general_blending,21,2026081310,gbm_identity
+S11,four_components,4,scheffe_quadratic,30,2026081311,higher_dimensional_simplex
+S12,split_plot,3,mixture_process_mixed,32,2026081312,whole_plot_semantics

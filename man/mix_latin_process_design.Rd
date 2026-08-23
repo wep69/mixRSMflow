@@ -1,0 +1,37 @@
+\name{mix_latin_process_design}
+\alias{mix_latin_process_design}
+\title{Generate a Latin-square crossed mixture-process design}
+\usage{
+mix_latin_process_design(spec, process1, process2, base_type="simplex_centroid",
+degree=2L, seed=1L)
+}
+\arguments{
+  \item{spec}{A `mix_spec` object.}
+  \item{process1}{Single-element named lists, for example `list(temperature = c(20, 30, 40))`, containing equal numbers of levels. For backward compatibility, a numeric vector with a single common name is also accepted.}
+  \item{process2}{Single-element named lists, for example `list(temperature = c(20, 30, 40))`, containing equal numbers of levels. For backward compatibility, a numeric vector with a single common name is also accepted.}
+  \item{base_type}{Base mixture design type.}
+  \item{degree}{Base mixture lattice degree.}
+  \item{seed}{Random seed used when recycling/shuffling mixture runs.}
+}
+\description{
+This helper assigns two process factors with the same number of levels to a square layout using a cyclic Latin square and crosses each cell with one row from a base mixture design. It is primarily a structured teaching/construction
+}
+\details{
+This help page is a prebuilt source-snapshot reference. The roxygen2 comments in the R source are authoritative and should be regenerated with roxygen2 during the local release gate.
+}
+\value{
+A `mix_design` with row, column, and Latin treatment identifiers.
+}
+\seealso{\code{mix_capabilities()}, the package vignettes, and \code{mix_report()}.}
+\examples{
+sp <- mix_spec(c("A", "B", "C"))
+d <- mix_latin_process_design(sp, list(temp = c(20, 30)),
+                              list(speed = c(100, 200)), seed = 3)
+head(d$data)
+d2 <- mix_latin_process_design(sp, list(temp = c(20, 30, 40)),
+                               list(speed = c(100, 200, 300)), seed = 4)
+nrow(d2$data)
+d3 <- mix_latin_process_design(sp, list(temp = c(20, 30)), list(speed = c(100, 200)),
+                               base_type = "simplex_lattice", degree = 1, seed = 5)
+nrow(d3$data)
+}
