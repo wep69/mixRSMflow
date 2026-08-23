@@ -15,16 +15,14 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 src_file <- "
 27-mixture-process-and-structured-experiments.md
 "
-monographs_dirs <- c(
-  system.file("monographs", package = "mixRSMflow"),
-  file.path("..", "inst", "monographs")
-)
-src <- ""
-for (d in monographs_dirs) {
-  candidate <- file.path(d, src_file)
-  if (file.exists(candidate)) { src <- candidate; break }
+# Find the package root by walking up from getwd() until DESCRIPTION is found
+pkg_root <- getwd()
+while (pkg_root != dirname(pkg_root)) {
+  if (file.exists(file.path(pkg_root, "DESCRIPTION"))) break
+  pkg_root <- dirname(pkg_root)
 }
-if (nzchar(src)) {
+src <- file.path(pkg_root, "inst", "monographs", src_file)
+if (nzchar(src) && file.exists(src)) {
   cat(readLines(src, warn = FALSE, encoding = "UTF-8"), sep = "\n")
 } else {
   cat("**Extended tutorial not found.**\n")
