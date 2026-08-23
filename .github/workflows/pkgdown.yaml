@@ -17,7 +17,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::pkgdown
-          needs: website
+          needs: check
       - name: Build site locally in CI
         shell: Rscript {0}
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
