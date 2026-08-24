@@ -31,7 +31,10 @@ jobs:
           if (nzchar(md_dir)) cat("files:", paste(list.files(md_dir), collapse = ", "), "\n")
       - name: Build site locally in CI
         shell: Rscript {0}
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
+        run: |
+          lib <- dirname(system.file("DESCRIPTION", package = "mixRSMflow"))
+          if (nzchar(lib)) Sys.setenv(R_LIBS = dirname(lib))
+          pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
