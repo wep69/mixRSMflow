@@ -59,7 +59,7 @@ r
 #> <mix_report> markdown 
 #> # mixRSMflow Scientific Analysis Report
 #> 
-#> Generated: 2026-08-24 00:09:25 UTC
+#> Generated: 2026-08-24 00:20:26 UTC
 #> 
 #> ## Scientific scope
 #> 
