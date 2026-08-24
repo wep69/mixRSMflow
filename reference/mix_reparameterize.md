@@ -54,7 +54,7 @@ slack$reparameterization
 #> [1] "C"
 #> 
 #> $max_abs_fitted_difference
-#> [1] 6.217249e-15
+#> [1] 7.105427e-15
 #> 
 slack2 <- mix_reparameterize(fit, slack_component = "A")
 slack2$reparameterization
@@ -65,7 +65,7 @@ slack2$reparameterization
 #> [1] "A"
 #> 
 #> $max_abs_fitted_difference
-#> [1] 3.552714e-15
+#> [1] 4.440892e-15
 #> 
 fit_lin <- mix_fit("response", d, sp, model = "scheffe_linear")
 mix_reparameterize(fit_lin)
