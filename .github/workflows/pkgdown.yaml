@@ -21,14 +21,15 @@ jobs:
       - name: Install package from source
         shell: Rscript {0}
         run: install.packages(".", repos = NULL, type = "source")
-      - name: Verify package installation
+      - name: Copy monographs into installed package
         shell: Rscript {0}
         run: |
-          cat("installed:", requireNamespace("mixRSMflow"), "\n")
-          cat("lib paths:", paste(.libPaths(), collapse = "; "), "\n")
-          md_dir <- system.file("monographs", package = "mixRSMflow")
-          cat("monographs dir:", md_dir, "\n")
-          if (nzchar(md_dir)) cat("files:", paste(list.files(md_dir), collapse = ", "), "\n")
+          lib <- dirname(system.file("DESCRIPTION", package = "mixRSMflow"))
+          src <- file.path(getwd(), "inst", "monographs")
+          dst <- file.path(lib, "mixRSMflow", "monographs")
+          dir.create(dst, showWarnings = FALSE, recursive = TRUE)
+          file.copy(list.files(src, full.names = TRUE), dst, recursive = TRUE)
+          cat("monographs copied:", length(list.files(dst)), "files\n")
       - name: Build site locally in CI
         shell: Rscript {0}
         run: |
