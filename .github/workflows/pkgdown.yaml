@@ -21,6 +21,14 @@ jobs:
       - name: Install package from source
         shell: Rscript {0}
         run: install.packages(".", repos = NULL, type = "source")
+      - name: Verify package installation
+        shell: Rscript {0}
+        run: |
+          cat("installed:", requireNamespace("mixRSMflow"), "\n")
+          cat("lib paths:", paste(.libPaths(), collapse = "; "), "\n")
+          md_dir <- system.file("monographs", package = "mixRSMflow")
+          cat("monographs dir:", md_dir, "\n")
+          if (nzchar(md_dir)) cat("files:", paste(list.files(md_dir), collapse = ", "), "\n")
       - name: Build site locally in CI
         shell: Rscript {0}
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = TRUE, dest_dir = "_site")
