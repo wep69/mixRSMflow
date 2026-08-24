@@ -63,9 +63,9 @@ fit <- mix_fit("response", d, sp)
 ci <- mix_optimum_ci(fit, method = "parametric", B = 10, grid_resolution = 6, seed = 2)
 ci$intervals
 #>   component  estimate    lower     upper
-#> 1         A 0.5000000 0.051847 0.9591927
-#> 2         B 0.1666667 0.000000 0.4813687
-#> 3         C 0.3333333 0.000000 0.8875000
+#> 1         A 0.5000000 0.321363 0.9250000
+#> 2         B 0.1666667 0.000000 0.4898426
+#> 3         C 0.3333333 0.000000 0.6291667
 ci2 <- mix_optimum_ci(fit, method = "residual_bootstrap", B = 10, grid_resolution = 6, seed = 3)
 ci2$intervals
 #>   component  estimate      lower     upper
@@ -74,11 +74,11 @@ ci2$intervals
 #> 3         C 0.3333333 0.01308086 0.6291667
 mix_optimum_ci(fit, method = "parametric", B = 10, level = .9, grid_resolution = 6, seed = 4)
 #> <mix_optimum_ci> parametric  Successful: 10 / 10 
-#>  component  estimate        lower     upper
-#>          A 0.5000000 0.0015714310 0.7762701
-#>          B 0.1666667 0.0008900304 0.5498325
-#>          C 0.3333333 0.0000000000 0.5446590
+#>  component  estimate     lower     upper
+#>          A 0.5000000 0.3411407 0.9250000
+#>          B 0.1666667 0.0000000 0.5000000
+#>          C 0.3333333 0.0000000 0.4198982
 #> Response interval:
 #>    lower   median    upper 
-#> 6.288780 6.361365 6.518877 
+#> 5.949792 6.247066 6.494965 
 ```
