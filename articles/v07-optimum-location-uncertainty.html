@@ -60,8 +60,1357 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-optimum-location-uncertainty-and-near-optimal-regions">mixRSMflow: Optimum Location, Uncertainty, and Near-Optimal
+Regions<a class="anchor" aria-label="anchor" href="#mixrsmflow-optimum-location-uncertainty-and-near-optimal-regions"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 29<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> constrained single-response
+optimization, maximum/minimum/target goals, exact versus practical
+optima, boundary solutions, near-optimal regions, parametric
+optimum-location uncertainty, residual bootstrap, joint optimum clouds,
+marginal component intervals, and decision interpretation<br><strong>Companion material:</strong> <code>13-optimization.Rmd</code>,
+<code>14-optimum-uncertainty.Rmd</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. An
+optimum is only as credible as the fitted response surface and the
+feasible region. Diagnose the model before using any optimization
+result.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="the-fitted-optimum-is-not-the-end-of-the-analysis">1. The fitted optimum is not the end of the analysis<a class="anchor" aria-label="anchor" href="#the-fitted-optimum-is-not-the-end-of-the-analysis"></a>
+</h3>
+<p>Response-surface software can return a mathematically exact optimum
+to many decimal places. That numerical precision is not the same as
+scientific certainty.</p>
+<p>If the response surface is flat near the maximum, many formulations
+may be practically indistinguishable. If coefficients are uncertain, the
+optimum may move substantially when the surface is perturbed. If the
+best point is on a boundary, the constraint itself may define part of
+the result.</p>
+<p>The central rule is:</p>
+<p><strong>Report where the fitted optimum is, how uncertain its
+location is, and which nearby blends perform nearly as
+well.</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>maximize a fitted mixture response inside the declared feasible
+region;</li>
+<li>minimize a response or find a composition near a target value;</li>
+<li>compare grid, GA, and hybrid optimization routes;</li>
+<li>identify boundary versus interior optima;</li>
+<li>explain why a constrained optimum can be driven by bounds;</li>
+<li>define a practical near-optimal tolerance;</li>
+<li>distinguish exact mathematical optimum from practical equivalent
+solutions;</li>
+<li>construct parametric coefficient-simulation uncertainty for the
+optimum;</li>
+<li>construct residual-bootstrap uncertainty for supported Gaussian
+fits;</li>
+<li>interpret the joint optimum cloud;</li>
+<li>interpret marginal component intervals without pretending component
+coordinates are independent;</li>
+<li>assess whether the optimum location is stable across model
+choices;</li>
+<li>connect flat response surfaces with broad optimum uncertainty;</li>
+<li>report a recommended formulation together with feasible
+alternatives.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Task</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Fit response surface</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Diagnose before optimization</td>
+<td align="left">
+<code><a href="../reference/mix_anova.html">mix_anova()</a></code>, <code><a href="../reference/mix_diagnose.html">mix_diagnose()</a></code>,
+<code><a href="../reference/mix_collinearity.html">mix_collinearity()</a></code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Predict on candidate blends</td>
+<td align="left"><code><a href="../reference/mix_predict.html">mix_predict()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Optimize</td>
+<td align="left"><code><a href="../reference/mix_optimize.html">mix_optimize()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Optimum uncertainty</td>
+<td align="left"><code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Plot optimum</td>
+<td align="left"><code>mix_plot(type="optimum")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Plot joint uncertainty</td>
+<td align="left"><code>mix_plot(type="optimum_ci")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Design around current optimum</td>
+<td align="left">
+<code>mix_augment(objective="optimum_uncertainty")</code> —
+detailed in Vignette 30</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--prepare-a-trustworthy-fitted-surface">Part I. Prepare a trustworthy fitted surface<a class="anchor" aria-label="anchor" href="#part-i--prepare-a-trustworthy-fitted-surface"></a>
+</h2>
+<div class="section level3">
+<h3 id="reproducible-teaching-fit">4. Reproducible teaching fit<a class="anchor" aria-label="anchor" href="#reproducible-teaching-fit"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.90</span>, <span class="fl">0.90</span>, <span class="fl">0.90</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span></span>
+<span>  <span class="st">"mixture"</span>,</span>
+<span>  n_rep <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>,</span>
+<span>  <span class="va">d</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Before optimizing:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_anova.html">mix_anova</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_collinearity.html">mix_collinearity</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="stop-conditions">Stop conditions<a class="anchor" aria-label="anchor" href="#stop-conditions"></a>
+</h4>
+<p>Do not proceed as if the optimum were trustworthy if:</p>
+<ul>
+<li>the model is rank deficient;</li>
+<li>lack of fit is severe and scientifically important;</li>
+<li>the surface is dominated by one influential blend;</li>
+<li>the feasible region is nearly degenerate;</li>
+<li>the fitted model extrapolates far beyond experimental support.</li>
+</ul>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--maximum-minimum-and-target-goals">Part II. Maximum, minimum, and target goals<a class="anchor" aria-label="anchor" href="#part-ii--maximum-minimum-and-target-goals"></a>
+</h2>
+<div class="section level3">
+<h3 id="maximize">5. Maximize<a class="anchor" aria-label="anchor" href="#maximize"></a>
+</h3>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_max</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">35</span>,</span>
+<span>  random_candidates <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>  near_tolerance <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29002</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op_max</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="minimize">6. Minimize<a class="anchor" aria-label="anchor" href="#minimize"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_min</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"minimize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29003</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Minimization is relevant for:</p>
+<ul>
+<li>cost;</li>
+<li>toxicity;</li>
+<li>salinity;</li>
+<li>pollutant loss;</li>
+<li>disease severity;</li>
+<li>undesirable sensory attributes.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="target">7. Target<a class="anchor" aria-label="anchor" href="#target"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_target</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"target"</span>,</span>
+<span>  target <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"grid"</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">40</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A target problem seeks a response close to a desired value rather
+than an extreme.</p>
+<p>Examples include:</p>
+<ul>
+<li>target pH;</li>
+<li>target density;</li>
+<li>target release rate;</li>
+<li>target nutrient concentration.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--search-methods">Part III. Search methods<a class="anchor" aria-label="anchor" href="#part-iii--search-methods"></a>
+</h2>
+<div class="section level3">
+<h3 id="grid-search">8. Grid search<a class="anchor" aria-label="anchor" href="#grid-search"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"grid"</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="strengths">Strengths<a class="anchor" aria-label="anchor" href="#strengths"></a>
+</h4>
+<ul>
+<li>deterministic on the declared grid;</li>
+<li>easy to visualize;</li>
+<li>transparent.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="limitation">Limitation<a class="anchor" aria-label="anchor" href="#limitation"></a>
+</h4>
+<p>The optimum is restricted to evaluated grid points, so resolution
+controls numerical location precision.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="genetic-algorithm">9. Genetic algorithm<a class="anchor" aria-label="anchor" href="#genetic-algorithm"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_ga</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"ga"</span>,</span>
+<span>  random_candidates <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29101</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use a fixed seed and check stability if the precise solution
+matters.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="hybrid-search">10. Hybrid search<a class="anchor" aria-label="anchor" href="#hybrid-search"></a>
+</h3>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_hybrid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  random_candidates <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29102</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A hybrid search combines deterministic coverage and stochastic/local
+refinement.</p>
+<div class="section level4">
+<h4 id="practical-rule">Practical rule<a class="anchor" aria-label="anchor" href="#practical-rule"></a>
+</h4>
+<p>When the surface is smooth and low-dimensional, different reasonable
+methods should converge to similar predicted optima. Large disagreement
+is a diagnostic signal that the search, model, or surface geometry
+deserves closer inspection.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--boundary-and-interior-optima">Part IV. Boundary and interior optima<a class="anchor" aria-label="anchor" href="#part-iv--boundary-and-interior-optima"></a>
+</h2>
+<div class="section level3">
+<h3 id="detect-whether-the-optimum-is-on-a-constraint">11. Detect whether the optimum is on a constraint<a class="anchor" aria-label="anchor" href="#detect-whether-the-optimum-is-on-a-constraint"></a>
+</h3>
+<p>Inspect the best composition and compare it with component bounds and
+general inequalities.</p>
+<p>If a component equals its upper bound within tolerance, the solution
+is constrained by that boundary.</p>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>A boundary optimum can mean:</p>
+<ol style="list-style-type: decimal">
+<li>the true best composition lies near that boundary;</li>
+<li>the fitted surface continues improving outside the allowed
+region;</li>
+<li>the experimental bounds may be limiting scientific discovery;</li>
+<li>the boundary is a real safety/operational limit and should not be
+widened.</li>
+</ol>
+<p>Do not recommend extrapolating beyond a scientifically required bound
+simply because the fitted gradient points outward.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="interior-optimum">12. Interior optimum<a class="anchor" aria-label="anchor" href="#interior-optimum"></a>
+</h3>
+<p>An interior optimum is surrounded by feasible alternatives in all
+independent-coordinate directions.</p>
+<p>It is often easier to estimate its local shape than a corner optimum,
+but uncertainty can still be broad when the response surface is
+flat.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--near-optimal-regions">Part V. Near-optimal regions<a class="anchor" aria-label="anchor" href="#part-v--near-optimal-regions"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-near-optimal-solutions-matter">13. Why near-optimal solutions matter<a class="anchor" aria-label="anchor" href="#why-near-optimal-solutions-matter"></a>
+</h3>
+<p>Suppose the predicted maximum is 100. A formulation with predicted
+response 99 may be operationally preferable if it is cheaper, safer,
+easier to prepare, or more stable.</p>
+<p>Set a relative tolerance:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_near</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"grid"</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>  near_tolerance <span class="op">=</span> <span class="fl">0.02</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">op_near</span><span class="op">$</span><span class="va">near_optimal</span><span class="op">)</span></span></code></pre></div>
+<p>A 2% tolerance identifies formulations near the fitted optimum under
+the package’s criterion.</p>
+<div class="section level4">
+<h4 id="scientific-selection-of-tolerance">Scientific selection of tolerance<a class="anchor" aria-label="anchor" href="#scientific-selection-of-tolerance"></a>
+</h4>
+<p>Use:</p>
+<ul>
+<li>minimum agronomically important difference;</li>
+<li>assay repeatability;</li>
+<li>economic equivalence;</li>
+<li>manufacturing tolerance;</li>
+<li>stakeholder decision threshold.</li>
+</ul>
+<p>Do not choose 2% merely because it produces a convenient-sized
+cloud.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="practical-optimum-versus-mathematical-optimum">14. Practical optimum versus mathematical optimum<a class="anchor" aria-label="anchor" href="#practical-optimum-versus-mathematical-optimum"></a>
+</h3>
+<p>Recommended reporting language:</p>
+<blockquote>
+<p>The fitted mathematical optimum occurred at composition X. However, a
+broader set of formulations within the declared practical tolerance
+produced nearly equivalent predicted response. Formulation Y was
+selected from this near-optimal region because of its operational
+advantages.</p>
+</blockquote>
+<p>This is often more scientifically honest than reporting only the
+exact maximum.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--parametric-uncertainty-of-optimum-location">Part VI. Parametric uncertainty of optimum location<a class="anchor" aria-label="anchor" href="#part-vi--parametric-uncertainty-of-optimum-location"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-perturb-the-coefficients">15. Why perturb the coefficients?<a class="anchor" aria-label="anchor" href="#why-perturb-the-coefficients"></a>
+</h3>
+<p>The fitted coefficient vector <code>beta_hat</code> is uncertain.
+Under a Gaussian approximation,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>β</mi><mrow><mo stretchy="false" form="prefix">(</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo>,</mo><mover><mrow><mi>V</mi><mi>a</mi><mi>r</mi></mrow><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mover><mi>β</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\beta^{(b)}\sim N(\hat\beta,\widehat{Var}(\hat\beta)).
+</annotation></semantics></math></p>
+<p>For each simulated coefficient vector:</p>
+<ol style="list-style-type: decimal">
+<li>construct the perturbed surface;</li>
+<li>optimize it under the same mixture constraints;</li>
+<li>store the resulting optimum composition.</li>
+</ol>
+<p>The cloud of optima describes uncertainty in
+<strong>location</strong>, not only uncertainty in the response at one
+fixed composition.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="run-parametric-optimum-uncertainty">16. Run parametric optimum uncertainty<a class="anchor" aria-label="anchor" href="#run-parametric-optimum-uncertainty"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ci_p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span></span>
+<span>  <span class="va">op_hybrid</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">25</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29201</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ci_p</span></span></code></pre></div>
+<p>Plot:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">ci_p</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"optimum_ci"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="interpret-the-joint-cloud">17. Interpret the joint cloud<a class="anchor" aria-label="anchor" href="#interpret-the-joint-cloud"></a>
+</h3>
+<p>A compact cloud around the exact optimum indicates relatively stable
+location under the fitted covariance approximation.</p>
+<p>A broad or multimodal cloud may indicate:</p>
+<ul>
+<li>flat surface;</li>
+<li>coefficient uncertainty;</li>
+<li>competing local maxima;</li>
+<li>boundary instability;</li>
+<li>weak design information in the optimum region.</li>
+</ul>
+<p>Do not summarize a visibly multimodal cloud only by marginal
+intervals.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--residual-bootstrap">Part VII. Residual bootstrap<a class="anchor" aria-label="anchor" href="#part-vii--residual-bootstrap"></a>
+</h2>
+<div class="section level3">
+<h3 id="residual-bootstrap-principle">18. Residual-bootstrap principle<a class="anchor" aria-label="anchor" href="#residual-bootstrap-principle"></a>
+</h3>
+<p>For supported Gaussian fits, the residual bootstrap perturbs the
+observed response structure by resampling residual information and
+refitting/reoptimizing.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ci_r</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span></span>
+<span>  <span class="va">op_hybrid</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"residual_bootstrap"</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  grid_resolution <span class="op">=</span> <span class="fl">25</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29202</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>Parametric simulation depends strongly on the estimated coefficient
+covariance and its approximate distribution. Residual bootstrap reflects
+the fitted Gaussian residual structure under its own assumptions.</p>
+<p>If the two uncertainty clouds differ substantially, investigate why
+rather than averaging them.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--marginal-component-intervals">Part VIII. Marginal component intervals<a class="anchor" aria-label="anchor" href="#part-viii--marginal-component-intervals"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-component-intervals-are-dependent">19. Why component intervals are dependent<a class="anchor" aria-label="anchor" href="#why-component-intervals-are-dependent"></a>
+</h3>
+<p>If</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>+</mo><mi>B</mi><mo>+</mo><mi>C</mi><mo>=</mo><mn>1</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">
+A+B+C=1,
+</annotation></semantics></math></p>
+<p>then uncertainty in A cannot be interpreted independently of B and
+C.</p>
+<p><code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code> can summarize marginal component
+quantiles, but the joint cloud remains the authoritative geometric
+picture.</p>
+<div class="section level4">
+<h4 id="bad-interpretation">Bad interpretation<a class="anchor" aria-label="anchor" href="#bad-interpretation"></a>
+</h4>
+<blockquote>
+<p>A can vary independently from 0.20 to 0.50 while B and C remain at
+their optimal estimates.</p>
+</blockquote>
+<p>This generally violates the mixture constraint.</p>
+</div>
+<div class="section level4">
+<h4 id="better-interpretation">Better interpretation<a class="anchor" aria-label="anchor" href="#better-interpretation"></a>
+</h4>
+<blockquote>
+<p>Across reoptimized surfaces, the marginal distribution of the optimal
+A proportion covered this interval, with joint compositions represented
+by the optimum cloud.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--response-uncertainty-versus-location-uncertainty">Part IX. Response uncertainty versus location uncertainty<a class="anchor" aria-label="anchor" href="#part-ix--response-uncertainty-versus-location-uncertainty"></a>
+</h2>
+<div class="section level3">
+<h3 id="two-different-uncertainties">20. Two different uncertainties<a class="anchor" aria-label="anchor" href="#two-different-uncertainties"></a>
+</h3>
+<p>At a fixed composition <code>x*</code>, <code><a href="../reference/mix_predict.html">mix_predict()</a></code>
+can quantify uncertainty in the predicted mean response.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_predict.html">mix_predict</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  newdata <span class="op">=</span> <span class="va">op_hybrid</span><span class="op">$</span><span class="va">best</span>,</span>
+<span>  interval <span class="op">=</span> <span class="st">"confidence"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code> asks a different question:</p>
+<blockquote>
+<p>Where would the maximizing composition move if the fitted surface
+changed within its estimation uncertainty?</p>
+</blockquote>
+<p>Both are scientifically useful and should not be conflated.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--model-choice-sensitivity">Part X. Model-choice sensitivity<a class="anchor" aria-label="anchor" href="#part-x--model-choice-sensitivity"></a>
+</h2>
+<div class="section level3">
+<h3 id="compare-quadratic-and-special-cubic-optima">21. Compare quadratic and special-cubic optima<a class="anchor" aria-label="anchor" href="#compare-quadratic-and-special-cubic-optima"></a>
+</h3>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_q</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op_q</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit_q</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29301</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit_c</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29301</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op_q</span><span class="op">$</span><span class="va">best</span></span>
+<span><span class="va">op_c</span><span class="op">$</span><span class="va">best</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-2">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-2"></a>
+</h4>
+<p>If two defensible models fit similarly but yield very different
+optima, model uncertainty is scientifically important.</p>
+<p>Do not present one composition as uniquely established without
+discussing this sensitivity.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--agronomic-case-substrate-formulation">Part XI. Agronomic case: substrate formulation<a class="anchor" aria-label="anchor" href="#part-xi--agronomic-case-substrate-formulation"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-setup">22. Scientific setup<a class="anchor" aria-label="anchor" href="#scientific-setup"></a>
+</h3>
+<p>Substrate components:</p>
+<ul>
+<li>compost <code>C</code>;</li>
+<li>biochar <code>B</code>;</li>
+<li>mineral carrier <code>M</code>.</li>
+</ul>
+<p>Response: seedling biomass.</p>
+<div class="section level4">
+<h4 id="step-1-region">Step 1: region<a class="anchor" aria-label="anchor" href="#step-1-region"></a>
+</h4>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_sub</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="st">"B"</span>, <span class="st">"M"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.35</span>, <span class="fl">0.60</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-2-design-and-teaching-response">Step 2: design and teaching response<a class="anchor" aria-label="anchor" href="#step-2-design-and-teaching-response"></a>
+</h4>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_sub</span>,</span>
+<span>  <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">4</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">29401</span><span class="op">)</span></span>
+<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="va">des</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">dat</span><span class="op">$</span><span class="va">biomass</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">dat</span>,</span>
+<span>  <span class="fl">30</span> <span class="op">+</span> <span class="fl">12</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span> <span class="fl">7</span> <span class="op">*</span> <span class="va">B</span> <span class="op">+</span> <span class="fl">6</span> <span class="op">*</span> <span class="va">M</span> <span class="op">+</span></span>
+<span>  <span class="fl">8</span> <span class="op">*</span> <span class="va">C</span> <span class="op">*</span> <span class="va">B</span> <span class="op">-</span> <span class="fl">4</span> <span class="op">*</span> <span class="va">B</span> <span class="op">*</span> <span class="va">M</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dat</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.8</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-3-fit-and-diagnose">Step 3: fit and diagnose<a class="anchor" aria-label="anchor" href="#step-3-fit-and-diagnose"></a>
+</h4>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_sub</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"biomass"</span>,</span>
+<span>  <span class="va">dat</span>,</span>
+<span>  <span class="va">sp_sub</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit_sub</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_collinearity.html">mix_collinearity</a></span><span class="op">(</span><span class="va">fit_sub</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-4-exact-optimum">Step 4: exact optimum<a class="anchor" aria-label="anchor" href="#step-4-exact-optimum"></a>
+</h4>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op_sub</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit_sub</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  near_tolerance <span class="op">=</span> <span class="fl">0.02</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29402</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op_sub</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-5-uncertainty-cloud">Step 5: uncertainty cloud<a class="anchor" aria-label="anchor" href="#step-5-uncertainty-cloud"></a>
+</h4>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ci_sub</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span></span>
+<span>  <span class="va">op_sub</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">29403</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-6-inspect-near-optimal-formulations">Step 6: inspect near-optimal formulations<a class="anchor" aria-label="anchor" href="#step-6-inspect-near-optimal-formulations"></a>
+</h4>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">op_sub</span><span class="op">$</span><span class="va">near_optimal</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-7-select-a-practical-formulation">Step 7: select a practical formulation<a class="anchor" aria-label="anchor" href="#step-7-select-a-practical-formulation"></a>
+</h4>
+<p>Choose from the near-optimal region using an external operational
+criterion such as cost or handling. If multiple responses are formally
+optimized together, move to Extended Vignette 28 rather than hiding an
+external cost rule inside this single-response analysis.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--flat-surfaces-and-optimum-uncertainty">Part XII. Flat surfaces and optimum uncertainty<a class="anchor" aria-label="anchor" href="#part-xii--flat-surfaces-and-optimum-uncertainty"></a>
+</h2>
+<div class="section level3">
+<h3 id="curvature-matters">23. Curvature matters<a class="anchor" aria-label="anchor" href="#curvature-matters"></a>
+</h3>
+<p>Two fitted surfaces can have the same maximum response but very
+different decision certainty.</p>
+<p><strong>Sharp peak:</strong> small coefficient changes may leave the
+optimum near the same point.</p>
+<p><strong>Flat plateau:</strong> tiny coefficient changes can move the
+mathematical maximum widely while predicted response remains nearly
+unchanged.</p>
+<p>In the second case, the broad optimum cloud is not necessarily a
+failure. It can indicate that many formulations are practically
+equivalent.</p>
+<p>This is why near-optimal regions and location uncertainty should be
+considered together.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--common-mistakes">Part XIII. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xiii--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="reporting-too-many-decimals">24. Reporting too many decimals<a class="anchor" aria-label="anchor" href="#reporting-too-many-decimals"></a>
+</h3>
+<p>Numerical optimization precision is not experimental precision.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="optimizing-before-diagnosing">25. Optimizing before diagnosing<a class="anchor" aria-label="anchor" href="#optimizing-before-diagnosing"></a>
+</h3>
+<p>Never skip model adequacy.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ignoring-boundaries">26. Ignoring boundaries<a class="anchor" aria-label="anchor" href="#ignoring-boundaries"></a>
+</h3>
+<p>State which constraints are active at the optimum.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="calling-marginal-component-intervals-a-rectangular-confidence-region">27. Calling marginal component intervals a rectangular confidence
+region<a class="anchor" aria-label="anchor" href="#calling-marginal-component-intervals-a-rectangular-confidence-region"></a>
+</h3>
+<p>The joint compositions remain constrained.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="choosing-a-near-optimal-tolerance-without-practical-meaning">28. Choosing a near-optimal tolerance without practical meaning<a class="anchor" aria-label="anchor" href="#choosing-a-near-optimal-tolerance-without-practical-meaning"></a>
+</h3>
+<p>Tie it to biological, economic, or operational equivalence.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-one-models-optimum-as-certain-when-competing-models-differ">29. Treating one model’s optimum as certain when competing models
+differ<a class="anchor" aria-label="anchor" href="#treating-one-models-optimum-as-certain-when-competing-models-differ"></a>
+</h3>
+<p>Report model-choice sensitivity.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="confusing-response-interval-with-optimum-location-interval">30. Confusing response interval with optimum-location interval<a class="anchor" aria-label="anchor" href="#confusing-response-interval-with-optimum-location-interval"></a>
+</h3>
+<p>They answer different questions.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiv--function-selection-guide">Part XIV. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xiv--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Question</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Maximum feasible response</td>
+<td align="left"><code>mix_optimize(goal="maximize")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Minimum feasible response</td>
+<td align="left"><code>mix_optimize(goal="minimize")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Hit a target</td>
+<td align="left"><code>mix_optimize(goal="target")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Transparent deterministic search</td>
+<td align="left"><code>method="grid"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Stochastic search</td>
+<td align="left"><code>method="ga"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Combined search</td>
+<td align="left"><code>method="hybrid"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Practical alternatives</td>
+<td align="left">
+<code>near_tolerance</code> +
+<code>$near_optimal</code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Predicted-response interval at fixed blend</td>
+<td align="left"><code><a href="../reference/mix_predict.html">mix_predict()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Location uncertainty</td>
+<td align="left"><code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Focus future runs near uncertain optimum</td>
+<td align="left">
+<code>mix_augment(objective="optimum_uncertainty")</code>
+in Vignette 30</td>
+</tr>
+<tr class="odd">
+<td align="left">Multiple conflicting responses</td>
+<td align="left">Extended Vignette 28</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xv--reporting-checklist">Part XV. Reporting checklist<a class="anchor" aria-label="anchor" href="#part-xv--reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">fitted model and
+diagnostics;</label></li>
+<li><label><input type="checkbox">mixture region and active
+constraints;</label></li>
+<li><label><input type="checkbox">optimization goal;</label></li>
+<li><label><input type="checkbox">target value if
+applicable;</label></li>
+<li><label><input type="checkbox">search method;</label></li>
+<li><label><input type="checkbox">grid resolution;</label></li>
+<li><label><input type="checkbox">stochastic candidate
+count;</label></li>
+<li><label><input type="checkbox">seed;</label></li>
+<li><label><input type="checkbox">exact optimum
+composition;</label></li>
+<li><label><input type="checkbox">predicted response at
+optimum;</label></li>
+<li><label><input type="checkbox">response confidence/prediction
+interval where relevant;</label></li>
+<li><label><input type="checkbox">active boundary
+constraints;</label></li>
+<li><label><input type="checkbox">near-optimal tolerance;</label></li>
+<li><label><input type="checkbox">number/range of near-optimal
+candidates;</label></li>
+<li><label><input type="checkbox">optimum-uncertainty
+method;</label></li>
+<li><label><input type="checkbox">bootstrap/simulation count
+<code>B</code>;</label></li>
+<li><label><input type="checkbox">optimum cloud;</label></li>
+<li><label><input type="checkbox">marginal component
+intervals;</label></li>
+<li><label><input type="checkbox">sensitivity to model
+family;</label></li>
+<li><label><input type="checkbox">practical formulation selected and
+why.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--compact-uncertainty-aware-optimization-script">Appendix A. Compact uncertainty-aware optimization script<a class="anchor" aria-label="anchor" href="#appendix-a--compact-uncertainty-aware-optimization-script"></a>
+</h2>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">20260813</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  near_tolerance <span class="op">=</span> <span class="fl">0.02</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260813</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">op</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">op</span><span class="op">$</span><span class="va">near_optimal</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ci</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span></span>
+<span>  <span class="va">op</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260814</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">ci</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">op</span>, <span class="st">"optimum"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ci</span>, <span class="st">"optimum_ci"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns the uncertainty-aware
+<strong>single-response</strong> optimum. Multiple-response trade-offs
+are in 28. Design-focused sequential augmentation and Bayesian
+optimization are in 30. Optimal-design criteria are in 25. Full graphics
+engineering is in 32.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>The useful question is not only:</p>
+<blockquote>
+<p>Where is the fitted maximum?</p>
+</blockquote>
+<p>It is:</p>
+<p><strong>Which feasible formulations are credibly competitive, how
+much can the maximizing composition move under model uncertainty, and is
+an exact mathematical maximum more useful than a stable near-optimal
+region?</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-optimum-uncertainty-laboratories">Appendix C. Advanced optimum-uncertainty laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-optimum-uncertainty-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-sharp-peak-versus-flat-plateau">C1. Laboratory: sharp peak versus flat plateau<a class="anchor" aria-label="anchor" href="#c1--laboratory-sharp-peak-versus-flat-plateau"></a>
+</h3>
+<p>Create two synthetic response surfaces with similar maximum values
+but different curvature. Fit both and compare
+<code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code> clouds.</p>
+<div class="section level4">
+<h4 id="expected-lesson">Expected lesson<a class="anchor" aria-label="anchor" href="#expected-lesson"></a>
+</h4>
+<p>The flatter surface should produce a wider location cloud even if the
+standard error of the maximum response itself is modest. Location
+uncertainty and response uncertainty are not the same quantity.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-active-boundary-frequency">C2. Laboratory: active-boundary frequency<a class="anchor" aria-label="anchor" href="#c2--laboratory-active-boundary-frequency"></a>
+</h3>
+<p>Use a constrained region and parametric optimum simulation. For each
+simulated optimum, record whether A is at its upper bound, B is at its
+lower bound, or a combined constraint is active.</p>
+<p>Summarize the percentage of bootstrap/simulation optima on each
+boundary.</p>
+<div class="section level4">
+<h4 id="interpretation-3">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-3"></a>
+</h4>
+<p>If most simulated optima lie on the same boundary, the recommendation
+is strongly conditional on that constraint. If the active boundary
+changes frequently, location uncertainty is structurally important.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-model-choice-uncertainty">C3. Laboratory: model-choice uncertainty<a class="anchor" aria-label="anchor" href="#c3--laboratory-model-choice-uncertainty"></a>
+</h3>
+<p>Fit linear, quadratic, and special-cubic candidates when supported.
+For each defensible model:</p>
+<ol style="list-style-type: decimal">
+<li>optimize;</li>
+<li>compute near-optimal region;</li>
+<li>compute parametric location uncertainty;</li>
+<li>compare overlap of the optimum clouds.</li>
+</ol>
+<p>A narrow within-model cloud does not guarantee robustness if
+different plausible models place the optimum in different regions.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-choose-a-practical-formulation">C4. Laboratory: choose a practical formulation<a class="anchor" aria-label="anchor" href="#c4--laboratory-choose-a-practical-formulation"></a>
+</h3>
+<p>From a 2% near-optimal region, add an external cost column that is
+<strong>not</strong> part of the fitted response model. Select the
+lowest-cost formulation within the near-optimal set.</p>
+<p>Write a recommendation that distinguishes:</p>
+<ul>
+<li>statistical response optimum;</li>
+<li>practical cost-based choice.</li>
+</ul>
+<p>If cost is to be formally optimized jointly rather than used as a
+secondary rule, move to Extended Vignette 28.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--optimum-troubleshooting-matrix">Appendix D. Optimum troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--optimum-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely cause</th>
+<th align="left">Response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">grid and hybrid optima differ strongly</td>
+<td align="left">coarse grid or multimodal surface</td>
+<td align="left">increase resolution/check surface</td>
+</tr>
+<tr class="even">
+<td align="left">optimum always at bound</td>
+<td align="left">outward response gradient or tight constraints</td>
+<td align="left">report active bound; do not extrapolate
+automatically</td>
+</tr>
+<tr class="odd">
+<td align="left">bootstrap cloud extremely broad</td>
+<td align="left">flat surface/weak design/model instability</td>
+<td align="left">inspect curvature, design, conditioning</td>
+</tr>
+<tr class="even">
+<td align="left">bootstrap produces several clusters</td>
+<td align="left">competing local maxima</td>
+<td align="left">report multimodality, not only marginal intervals</td>
+</tr>
+<tr class="odd">
+<td align="left">component CIs appear incompatible</td>
+<td align="left">marginal summaries ignore dependence</td>
+<td align="left">inspect joint cloud</td>
+</tr>
+<tr class="even">
+<td align="left">residual bootstrap fails</td>
+<td align="left">unsupported/non-Gaussian model</td>
+<td align="left">use supported parametric route or appropriate
+method</td>
+</tr>
+<tr class="odd">
+<td align="left">exact optimum changes by model</td>
+<td align="left">model uncertainty</td>
+<td align="left">report sensitivity or collect additional data</td>
+</tr>
+<tr class="even">
+<td align="left">near-optimal set huge</td>
+<td align="left">flat response or large tolerance</td>
+<td align="left">define practical tolerance scientifically</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-optimum-exercises">Appendix E. Guided optimum exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-optimum-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--search-convergence">Exercise 1. Search convergence<a class="anchor" aria-label="anchor" href="#exercise-1--search-convergence"></a>
+</h4>
+<p>Compare grid resolutions 20, 40, and 80. Record the best response and
+composition. Determine when the result stabilizes.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--seed-stability">Exercise 2. Seed stability<a class="anchor" aria-label="anchor" href="#exercise-2--seed-stability"></a>
+</h4>
+<p>Repeat GA/hybrid optimization across ten seeds. Compare response
+regret relative to the best observed solution.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--boundary-classification">Exercise 3. Boundary classification<a class="anchor" aria-label="anchor" href="#exercise-3--boundary-classification"></a>
+</h4>
+<p>Write code that flags which constraints are active at the optimum
+within <code>1e-6</code> tolerance.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--practical-tolerance">Exercise 4. Practical tolerance<a class="anchor" aria-label="anchor" href="#exercise-4--practical-tolerance"></a>
+</h4>
+<p>Define near-optimal regions using 0.5%, 1%, 2%, and 5% response
+tolerance. Discuss which one corresponds to experimental
+repeatability.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--parametric-versus-residual-bootstrap">Exercise 5. Parametric versus residual bootstrap<a class="anchor" aria-label="anchor" href="#exercise-5--parametric-versus-residual-bootstrap"></a>
+</h4>
+<p>Compare cloud spread and centroid under both methods for a Gaussian
+teaching fit.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--component-dependence">Exercise 6. Component dependence<a class="anchor" aria-label="anchor" href="#exercise-6--component-dependence"></a>
+</h4>
+<p>Take two optimum-cloud points with similar A but different B and C.
+Explain why the marginal A interval does not determine a unique
+formulation.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--flat-plateau">Exercise 7. Flat plateau<a class="anchor" aria-label="anchor" href="#exercise-7--flat-plateau"></a>
+</h4>
+<p>Simulate a surface with a broad plateau. Explain why reporting six
+decimals for the maximizing composition is misleading.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--model-sensitivity">Exercise 8. Model sensitivity<a class="anchor" aria-label="anchor" href="#exercise-8--model-sensitivity"></a>
+</h4>
+<p>Compare quadratic and special-cubic optimum clouds and decide whether
+one formulation can be called robust.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--response-versus-location-interval">Exercise 9. Response versus location interval<a class="anchor" aria-label="anchor" href="#exercise-9--response-versus-location-interval"></a>
+</h4>
+<p>At the exact optimum, compute a confidence interval for the predicted
+mean. Explain why it cannot substitute for
+<code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code>.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--active-constraint">Exercise 10. Active constraint<a class="anchor" aria-label="anchor" href="#exercise-10--active-constraint"></a>
+</h4>
+<p>Artificially relax one upper bound and reoptimize. Explain whether
+the original bound was scientifically binding.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--decision-statement">Exercise 11. Decision statement<a class="anchor" aria-label="anchor" href="#exercise-11--decision-statement"></a>
+</h4>
+<p>Write a two-sentence recommendation that gives exact optimum, 95%
+location uncertainty, and a practical alternative.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A manuscript reports only “optimal A = 0.431, B = 0.274, C = 0.295.”
+List the minimum uncertainty and model information a reviewer should
+request.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-optimum-audit">Appendix F. Reviewer-style optimum audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-optimum-audit"></a>
+</h2>
+<p>Check that a paper states:</p>
+<ol style="list-style-type: decimal">
+<li>feasible region;</li>
+<li>fitted model;</li>
+<li>diagnostics before optimization;</li>
+<li>objective (maximize/minimize/target);</li>
+<li>search method and seed;</li>
+<li>exact optimum;</li>
+<li>active constraints;</li>
+<li>predicted response and uncertainty;</li>
+<li>near-optimal tolerance;</li>
+<li>optimum-location uncertainty method;</li>
+<li>
+<code>B</code> and seed;</li>
+<li>joint cloud/region;</li>
+<li>model-choice sensitivity;</li>
+<li>practical final recommendation.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="interior-stable-optimum">Interior stable optimum<a class="anchor" aria-label="anchor" href="#interior-stable-optimum"></a>
+</h4>
+<blockquote>
+<p>The fitted maximum occurred in the interior of the feasible region,
+and repeated coefficient simulation produced a compact joint optimum
+cloud around the same composition, indicating relatively stable optimum
+location under the fitted model.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="boundary-optimum">Boundary optimum<a class="anchor" aria-label="anchor" href="#boundary-optimum"></a>
+</h4>
+<blockquote>
+<p>The fitted maximum occurred on the declared upper bound for component
+A. The recommendation is therefore conditional on that formulation
+constraint and does not imply that extrapolation beyond the bound would
+be safe or scientifically valid.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="flat-near-optimal-region">Flat near-optimal region<a class="anchor" aria-label="anchor" href="#flat-near-optimal-region"></a>
+</h4>
+<blockquote>
+<p>Although one exact maximizing composition was identified numerically,
+a broad near-optimal region produced responses within 2% of the fitted
+maximum. The practical recommendation was selected from this region
+rather than from the exact mathematical optimum alone.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="model-sensitive-optimum">Model-sensitive optimum<a class="anchor" aria-label="anchor" href="#model-sensitive-optimum"></a>
+</h4>
+<blockquote>
+<p>The optimum location differed materially between two defensible model
+forms despite similar global fit metrics. Accordingly, the formulation
+recommendation is presented as model-sensitive and motivates additional
+experimentation near the competing optimum regions.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-optimum-case-bank">Appendix H. Applied optimum case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-optimum-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--flat-fertilizer-plateau">H1. Flat fertilizer plateau<a class="anchor" aria-label="anchor" href="#h1--flat-fertilizer-plateau"></a>
+</h3>
+<p>A nutrient blend has a broad plateau around maximum yield. Numerical
+optimization returns one composition, but a 2% near-optimal region spans
+a large part of the interior. In practice, the least expensive or
+easiest-to-manufacture formulation inside that plateau may be
+preferable. The broad optimum cloud is scientifically consistent with a
+flat response and should not be interpreted only as imprecision.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--regulatory-boundary-optimum">H2. Regulatory boundary optimum<a class="anchor" aria-label="anchor" href="#h2--regulatory-boundary-optimum"></a>
+</h3>
+<p>A pesticide active fraction is capped at 0.40 and the fitted response
+increases toward that cap. The optimum repeatedly occurs at A = 0.40.
+The scientific conclusion is that the best admissible formulation under
+the current model lies on the regulatory boundary—not that increasing A
+above 0.40 would be acceptable or necessarily effective.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--competing-model-optima">H3. Competing model optima<a class="anchor" aria-label="anchor" href="#h3--competing-model-optima"></a>
+</h3>
+<p>Quadratic and special-cubic models both pass global diagnostics but
+place the optimum in different regions. Within-model bootstrap clouds
+are narrow. This reveals model uncertainty that a single bootstrap
+cannot capture. Additional runs should target the regions where models
+disagree, connecting naturally to Extended Vignette 30.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--target-formulation-rather-than-maximum">H4. Target formulation rather than maximum<a class="anchor" aria-label="anchor" href="#h4--target-formulation-rather-than-maximum"></a>
+</h3>
+<p>A nutrient solution must achieve a target EC rather than maximize it.
+<code>goal="target"</code> is more scientifically appropriate than
+treating deviation in one direction as always beneficial. The
+recommended composition should include uncertainty in predicted EC and
+sensitivity to the target tolerance.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--practical-substitution-inside-near-optimal-region">H5. Practical substitution inside near-optimal region<a class="anchor" aria-label="anchor" href="#h5--practical-substitution-inside-near-optimal-region"></a>
+</h3>
+<p>A component becomes temporarily unavailable. Rather than refitting
+the whole experiment, search the existing near-optimal set for blends
+with lower use of that component. This demonstrates the practical value
+of retaining a cloud of good alternatives instead of archiving only one
+optimum row.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-optimum-review">Appendix I. Short-answer optimum review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-optimum-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>What is a mathematical optimum?</strong> The best point on
+the fitted surface under the search and constraints.</li>
+<li>
+<strong>What is a practical optimum?</strong> A decision-selected
+point that may sacrifice negligible response for other benefits.</li>
+<li>
+<strong>Why can an optimum be on a boundary?</strong> The fitted
+gradient may point outside the admissible region.</li>
+<li>
+<strong>What does <code>near_tolerance</code> represent?</strong> A
+practical response-loss threshold around the fitted optimum.</li>
+<li>
+<strong>What does <code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code> perturb?</strong>
+The fitted surface and then reoptimizes under the same constraints.</li>
+<li>
+<strong>Why is the joint cloud important?</strong> Component
+coordinates are dependent.</li>
+<li>
+<strong>Why can a flat surface give a broad cloud?</strong> Many
+nearby compositions have nearly identical response.</li>
+<li>
+<strong>Is a response CI at the optimum a location CI?</strong>
+No.</li>
+<li>
+<strong>Why compare model optima?</strong> To assess model-choice
+sensitivity.</li>
+<li>
+<strong>What should be reported for a boundary optimum?</strong>
+Active constraints and conditional interpretation.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-optimum-inference">Appendix J. Deeper conceptual notes on optimum inference<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-optimum-inference"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--a-maximum-is-a-derived-estimand">J1. A maximum is a derived estimand<a class="anchor" aria-label="anchor" href="#j1--a-maximum-is-a-derived-estimand"></a>
+</h3>
+<p>The optimum is not a directly estimated regression coefficient. It is
+a nonlinear function of all fitted coefficients and of the feasible
+region. Small coefficient changes can produce large location changes
+when curvature is weak. This is why standard errors of individual
+coefficients do not provide a simple substitute for optimum-location
+uncertainty.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--constraints-are-part-of-the-estimand">J2. Constraints are part of the estimand<a class="anchor" aria-label="anchor" href="#j2--constraints-are-part-of-the-estimand"></a>
+</h3>
+<p>The constrained optimum answers: “Which composition is best
+<strong>among the allowed formulations</strong>?” Changing a bound
+changes the estimand. Therefore an optimum should always be reported
+with the region definition. If a later regulation changes the admissible
+composition, the old optimum is not directly transferable even if the
+response model coefficients remain the same.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--flatness-versus-uncertainty">J3. Flatness versus uncertainty<a class="anchor" aria-label="anchor" href="#j3--flatness-versus-uncertainty"></a>
+</h3>
+<p>A broad near-optimal region can arise because the fitted response
+itself is flat. A broad bootstrap optimum cloud can arise because the
+estimated surface is uncertain. These mechanisms can coexist. The first
+concerns practical equivalence on the fitted surface; the second
+concerns uncertainty about which surface is correct. Plotting both helps
+distinguish them.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--multimodal-location-distributions">J4. Multimodal location distributions<a class="anchor" aria-label="anchor" href="#j4--multimodal-location-distributions"></a>
+</h3>
+<p>If repeated reoptimization produces several clusters, marginal
+quantile intervals can be misleading. For example, the median of A, B,
+and C may describe a composition that is rarely an optimum in any
+simulation. Preserve the joint cloud and, when useful, identify modes or
+regions rather than forcing a single elliptical summary.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--confirmatory-experimentation">J5. Confirmatory experimentation<a class="anchor" aria-label="anchor" href="#j5--confirmatory-experimentation"></a>
+</h3>
+<p>When the optimum is scientifically important, the analysis can
+motivate a follow-up experiment centered on the uncertain optimum
+region. Extended Vignette 30 describes augmentation. This staged
+workflow can be more credible than accepting a highly uncertain optimum
+from the first experiment.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

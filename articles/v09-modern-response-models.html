@@ -60,8 +60,1386 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-generalized-correlated-hierarchical-and-bayesian-mixture-models">mixRSMflow: Generalized, Correlated, Hierarchical, and Bayesian
+Mixture Models<a class="anchor" aria-label="anchor" href="#mixrsmflow-generalized-correlated-hierarchical-and-bayesian-mixture-models"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 31<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> response distributions and error
+structures beyond ordinary Gaussian OLS: WLS, GLM, GLS, linear
+mixed-effects mixture models, generalized mixed models through optional
+backend arguments, and Bayesian mixture fitting through
+<code>brms</code><br><strong>Companion material:</strong> <code>18-modern-models.Rmd</code>;
+Extended Vignette 27 owns the experimental design hierarchy itself</p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. Advanced
+backends are optional. Their numerical outputs and convergence
+diagnostics must be checked in the local R environment; code
+availability is not equivalent to scientific validation of a fitted
+model.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-the-mixture-basis-and-response-model-must-be-separated">1. Why the mixture basis and response model must be separated<a class="anchor" aria-label="anchor" href="#why-the-mixture-basis-and-response-model-must-be-separated"></a>
+</h3>
+<p>A mixture model has at least two conceptual layers:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>systematic blending structure</strong>, such as a Scheffé
+quadratic basis;</li>
+<li>
+<strong>stochastic response structure</strong>, such as Gaussian,
+Poisson, binomial, correlated Gaussian, hierarchical Gaussian, or
+Bayesian multilevel uncertainty.</li>
+</ol>
+<p>Changing the response distribution does not remove the mixture
+constraint. Adding a random block effect does not turn components into
+ordinary independent factors.</p>
+<p>The central rule is:</p>
+<p><strong>Keep the mixture basis explicit while choosing the simplest
+response/error structure justified by the data-generating process and
+experimental design.</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>distinguish model basis from response family;</li>
+<li>fit ordinary Gaussian mixture models with
+<code><a href="../reference/mix_fit.html">mix_fit()</a></code>;</li>
+<li>use weights when observation precision is known or scientifically
+modeled;</li>
+<li>fit Poisson and binomial GLM-style mixture surfaces;</li>
+<li>explain why overdispersion may require a different engine than
+ordinary Poisson GLM;</li>
+<li>fit Gaussian correlated-error models with
+<code><a href="../reference/mix_fit_gls.html">mix_fit_gls()</a></code>;</li>
+<li>distinguish residual covariance from random effects;</li>
+<li>fit hierarchical mixture models with
+<code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code>;</li>
+<li>encode blocks, batches, operators, or whole plots as random effects
+when scientifically appropriate;</li>
+<li>pass process terms through the same adapters without losing mixture
+semantics;</li>
+<li>fit optional Bayesian mixture models with
+<code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code>;</li>
+<li>state and justify priors rather than relying on opaque
+defaults;</li>
+<li>distinguish a Bayesian response fit from a Bayesian optimal-design
+criterion;</li>
+<li>use diagnostics and model comparison before interpreting
+coefficients;</li>
+<li>avoid automatic escalation to more complex engines.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Statistical layer</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Ordinary Gaussian/WLS/GLM</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Correlated or heterogeneous Gaussian errors</td>
+<td align="left"><code><a href="../reference/mix_fit_gls.html">mix_fit_gls()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Hierarchical/random effects</td>
+<td align="left"><code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Bayesian response model</td>
+<td align="left"><code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Model matrix</td>
+<td align="left"><code><a href="../reference/mix_basis.html">mix_basis()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Diagnostics</td>
+<td align="left">
+<code><a href="../reference/mix_diagnose.html">mix_diagnose()</a></code>,
+<code><a href="../reference/mix_collinearity.html">mix_collinearity()</a></code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Model comparison</td>
+<td align="left"><code><a href="../reference/mix_compare.html">mix_compare()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Prediction</td>
+<td align="left"><code><a href="../reference/mix_predict.html">mix_predict()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Reporting</td>
+<td align="left"><code><a href="../reference/mix_report.html">mix_report()</a></code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--gaussian-ols-as-the-reference-engine">Part I. Gaussian OLS as the reference engine<a class="anchor" aria-label="anchor" href="#part-i--gaussian-ols-as-the-reference-engine"></a>
+</h2>
+<div class="section level3">
+<h3 id="baseline-example">4. Baseline example<a class="anchor" aria-label="anchor" href="#baseline-example"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">31001</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">m_ols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>,</span>
+<span>  <span class="va">d</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span></code></pre></div>
+<p>Before escalating, examine:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_anova.html">mix_anova</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_collinearity.html">mix_collinearity</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span></code></pre></div>
+<p>If the Gaussian model is scientifically appropriate and diagnostics
+are adequate, there is no methodological prize for replacing it with a
+more complex engine.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--weighted-gaussian-fitting">Part II. Weighted Gaussian fitting<a class="anchor" aria-label="anchor" href="#part-ii--weighted-gaussian-fitting"></a>
+</h2>
+<div class="section level3">
+<h3 id="when-observations-have-different-precision">5. When observations have different precision<a class="anchor" aria-label="anchor" href="#when-observations-have-different-precision"></a>
+</h3>
+<p>Suppose each formulation mean is based on a different number of
+subsamples and a scientifically justified precision weight is
+available.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_w</span> <span class="op">&lt;-</span> <span class="va">d</span></span>
+<span><span class="va">d_w</span><span class="op">$</span><span class="va">weight</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">1.2</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d_w</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">m_wls</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>,</span>
+<span>  <span class="va">d_w</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  weights <span class="op">=</span> <span class="st">"weight"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>Weights should represent a known or defensible precision structure.
+Do not invent weights from residuals solely to force
+homoscedastic-looking plots without documenting the procedure.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--generalized-linear-mixture-models">Part III. Generalized-linear mixture models<a class="anchor" aria-label="anchor" href="#part-iii--generalized-linear-mixture-models"></a>
+</h2>
+<div class="section level3">
+<h3 id="poisson-counts">6. Poisson counts<a class="anchor" aria-label="anchor" href="#poisson-counts"></a>
+</h3>
+<p>Suppose the response is the number of pest individuals after
+treatment with a three-component botanical formulation.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">31101</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_count</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">4</span></span>
+<span><span class="op">)</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">d_count</span>,</span>
+<span>  <span class="fl">1.5</span> <span class="op">*</span> <span class="va">A</span> <span class="op">+</span> <span class="fl">0.8</span> <span class="op">*</span> <span class="va">B</span> <span class="op">+</span> <span class="fl">1.2</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">A</span> <span class="op">*</span> <span class="va">B</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_count</span><span class="op">$</span><span class="va">count</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d_count</span><span class="op">)</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">m_pois</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"count"</span>,</span>
+<span>  <span class="va">d_count</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"log"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">m_pois</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>The mixture basis enters the linear predictor. The log link maps the
+predictor to a positive mean count.</p>
+<p>A Poisson model assumes the conditional variance equals the
+conditional mean. If this assumption is inadequate, use an engine that
+supports an appropriate alternative such as a generalized mixed model
+rather than manipulating the response to resemble Gaussian data.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="binomial-proportions">7. Binomial proportions<a class="anchor" aria-label="anchor" href="#binomial-proportions"></a>
+</h3>
+<p>Suppose each blend is applied to 20 experimental units and the
+response is the number showing disease control.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">31102</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_bin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">4</span></span>
+<span><span class="op">)</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">lp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">d_bin</span>,</span>
+<span>  <span class="op">-</span><span class="fl">0.5</span> <span class="op">+</span> <span class="fl">1.8</span> <span class="op">*</span> <span class="va">A</span> <span class="op">+</span> <span class="fl">0.6</span> <span class="op">*</span> <span class="va">B</span> <span class="op">-</span> <span class="fl">0.2</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span> <span class="fl">1.0</span> <span class="op">*</span> <span class="va">A</span> <span class="op">*</span> <span class="va">B</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">plogis</a></span><span class="op">(</span><span class="va">lp</span><span class="op">)</span></span>
+<span><span class="va">d_bin</span><span class="op">$</span><span class="va">success</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d_bin</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">20</span>, prob <span class="op">=</span> <span class="va">p</span><span class="op">)</span></span>
+<span><span class="va">d_bin</span><span class="op">$</span><span class="va">failure</span> <span class="op">&lt;-</span> <span class="fl">20</span> <span class="op">-</span> <span class="va">d_bin</span><span class="op">$</span><span class="va">success</span></span></code></pre></div>
+<p>For an ordinary binomial GLM, construct the response in a form
+accepted by the underlying R family when using the lower-level fit
+workflow.</p>
+<p>The key point is not the syntax detail: the mixture terms still
+represent admissible changes within the simplex, while the binomial
+family represents sampling variation in the response.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="do-not-choose-a-family-by-histogram-alone">8. Do not choose a family by histogram alone<a class="anchor" aria-label="anchor" href="#do-not-choose-a-family-by-histogram-alone"></a>
+</h3>
+<p>Response-family selection should consider:</p>
+<ul>
+<li>experimental sampling unit;</li>
+<li>support of the response;</li>
+<li>mean-variance relationship;</li>
+<li>grouping or repeated observations;</li>
+<li>zero-generation mechanism;</li>
+<li>scientific interpretation of the link.</li>
+</ul>
+<p>A right-skewed positive continuous response is not automatically
+Gamma; a count is not automatically Poisson; a proportion derived from
+counts is not automatically beta.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--gls-for-residual-covariance">Part IV. GLS for residual covariance<a class="anchor" aria-label="anchor" href="#part-iv--gls-for-residual-covariance"></a>
+</h2>
+<div class="section level3">
+<h3 id="correlated-gaussian-errors">9. Correlated Gaussian errors<a class="anchor" aria-label="anchor" href="#correlated-gaussian-errors"></a>
+</h3>
+<p><code><a href="../reference/mix_fit_gls.html">mix_fit_gls()</a></code> delegates Gaussian generalized least
+squares to <code>nlme</code> when available.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"nlme"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">d_gls</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span></span>
+<span>    <span class="st">"mixture"</span>,</span>
+<span>    n_rep <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">31201</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">d_gls</span><span class="op">$</span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d_gls</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_gls</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_gls.html">mix_fit_gls</a></span><span class="op">(</span></span>
+<span>    <span class="st">"response"</span>,</span>
+<span>    <span class="va">d_gls</span>,</span>
+<span>    <span class="va">sp</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    method <span class="op">=</span> <span class="st">"REML"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_gls</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code>correlation=</code> and <code>variance=</code> can receive
+structures supported by <code>nlme</code>.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="residual-correlation-versus-random-effects">10. Residual correlation versus random effects<a class="anchor" aria-label="anchor" href="#residual-correlation-versus-random-effects"></a>
+</h3>
+<p>These are not interchangeable concepts.</p>
+<p>A random effect models variation among latent experimental units or
+groups. A residual covariance structure models remaining correlation
+among observations after fixed and random effects.</p>
+<p>For example:</p>
+<ul>
+<li>
+<code>batch</code> random intercept: batches differ in baseline
+response;</li>
+<li>AR(1) residual correlation: observations close in time remain
+correlated within a batch;</li>
+<li>variance function: residual variability changes with formulation or
+process condition.</li>
+</ul>
+<p>The correct choice comes from the design and measurement process.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="heterogeneous-gaussian-variance">11. Heterogeneous Gaussian variance<a class="anchor" aria-label="anchor" href="#heterogeneous-gaussian-variance"></a>
+</h3>
+<p>A formulation may be more variable in one part of the mixture space
+or under one process condition.</p>
+<p>If a known <code>nlme</code> variance structure is scientifically
+justified, pass it explicitly through <code>variance=</code>.</p>
+<div class="section level4">
+<h4 id="reporting-requirement">Reporting requirement<a class="anchor" aria-label="anchor" href="#reporting-requirement"></a>
+</h4>
+<p>State the exact covariance and variance functions, the grouping
+variable, and whether ML or REML was used.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--hierarchical-mixture-models">Part V. Hierarchical mixture models<a class="anchor" aria-label="anchor" href="#part-v--hierarchical-mixture-models"></a>
+</h2>
+<div class="section level3">
+<h3 id="blocks-and-batches">12. Blocks and batches<a class="anchor" aria-label="anchor" href="#blocks-and-batches"></a>
+</h3>
+<p>Suppose a mixture experiment is repeated across production
+batches.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">31301</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span></span>
+<span>  <span class="st">"mixture"</span>,</span>
+<span>  n_rep <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">31301</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_mixed</span><span class="op">$</span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d_mixed</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Fit:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">m_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_mixed.html">mix_fit_mixed</a></span><span class="op">(</span></span>
+<span>    response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">d_mixed</span>,</span>
+<span>    spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>    random <span class="op">=</span> <span class="st">"(1 | batch)"</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_mixed</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-2">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-2"></a>
+</h4>
+<p>The random intercept estimates between-batch heterogeneity while the
+mixture coefficients describe the population-average blending structure
+conditional on the model parameterization.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="random-effects-must-follow-experimental-units">13. Random effects must follow experimental units<a class="anchor" aria-label="anchor" href="#random-effects-must-follow-experimental-units"></a>
+</h3>
+<p>Possible legitimate random grouping factors include:</p>
+<ul>
+<li>blocks;</li>
+<li>batches;</li>
+<li>greenhouse benches;</li>
+<li>operators sampled from a larger population;</li>
+<li>whole plots;</li>
+<li>experimental units repeatedly measured under several process
+conditions.</li>
+</ul>
+<p>Do not add a random intercept because the fixed-effect model has a
+large p-value or because it lowers AIC. Random effects encode a sampling
+or randomization structure.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="split-plot-connection">14. Split-plot connection<a class="anchor" aria-label="anchor" href="#split-plot-connection"></a>
+</h3>
+<p>When <code>mix_design(type="split_plot")</code> creates
+<code>.whole_plot</code>, the corresponding analysis can include</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">random</span> <span class="op">=</span> <span class="st">"(1 | .whole_plot)"</span></span></code></pre></div>
+<p>if that matches the actual randomization.</p>
+<p>The design construction itself is owned by Extended Vignette 27; this
+vignette focuses on the stochastic model used after data are
+observed.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="mixture-process-mixed-model">15. Mixture-process mixed model<a class="anchor" aria-label="anchor" href="#mixture-process-mixed-model"></a>
+</h3>
+<p>The same adapter can include process terms.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span></span>
+<span>    <span class="st">"mixture_process"</span>,</span>
+<span>    n_rep <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">31401</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">mp</span><span class="op">$</span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">4</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">mp</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_mp_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_mixed.html">mix_fit_mixed</a></span><span class="op">(</span></span>
+<span>    response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">mp</span>,</span>
+<span>    spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>    random <span class="op">=</span> <span class="st">"(1 | batch)"</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"temperature"</span>, <span class="st">"time"</span><span class="op">)</span>,</span>
+<span>    mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>The mixture basis and random-effects hierarchy remain separate
+layers.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--generalized-mixed-models-through-the-mixed-adapter">Part VI. Generalized mixed models through the mixed adapter<a class="anchor" aria-label="anchor" href="#part-vi--generalized-mixed-models-through-the-mixed-adapter"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-combine-a-non-gaussian-family-with-random-effects">16. Why combine a non-Gaussian family with random effects?<a class="anchor" aria-label="anchor" href="#why-combine-a-non-gaussian-family-with-random-effects"></a>
+</h3>
+<p>Examples include:</p>
+<ul>
+<li>pest counts across blocks;</li>
+<li>disease incidence across greenhouse benches;</li>
+<li>emergence successes within field blocks;</li>
+<li>repeated count outcomes from the same experimental unit.</li>
+</ul>
+<p><code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code> accepts an optional <code>family</code>
+and delegates to an appropriate mixed-model backend when supported.</p>
+<div class="section level4">
+<h4 id="scientific-checklist">Scientific checklist<a class="anchor" aria-label="anchor" href="#scientific-checklist"></a>
+</h4>
+<p>Before fitting:</p>
+<ol style="list-style-type: decimal">
+<li>identify the response support;</li>
+<li>identify the experimental grouping;</li>
+<li>decide whether overdispersion or zero inflation is plausible;</li>
+<li>verify backend capability;</li>
+<li>inspect simulation-based or family-appropriate diagnostics in the
+backend where necessary.</li>
+</ol>
+<p>The package should not be used as a reason to ignore backend-specific
+diagnostics.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--bayesian-mixture-models">Part VII. Bayesian mixture models<a class="anchor" aria-label="anchor" href="#part-vii--bayesian-mixture-models"></a>
+</h2>
+<div class="section level3">
+<h3 id="bayesian-fitting-preserves-the-mixture-basis">17. Bayesian fitting preserves the mixture basis<a class="anchor" aria-label="anchor" href="#bayesian-fitting-preserves-the-mixture-basis"></a>
+</h3>
+<p>The optional adapter <code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code> delegates to
+<code>brms</code>.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Requires brms and a working Stan toolchain.</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">d_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span></span>
+<span>    <span class="st">"mixture"</span>,</span>
+<span>    n_rep <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">31501</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior</a></span><span class="op">(</span><span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">exponential</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"sigma"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_bayes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_bayes.html">mix_fit_bayes</a></span><span class="op">(</span></span>
+<span>    response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">d_b</span>,</span>
+<span>    spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    prior <span class="op">=</span> <span class="va">priors</span>,</span>
+<span>    brms_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>      chains <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>      iter <span class="op">=</span> <span class="fl">4000</span>,</span>
+<span>      seed <span class="op">=</span> <span class="fl">31501</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_bayes</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="priors-are-part-of-the-scientific-model">18. Priors are part of the scientific model<a class="anchor" aria-label="anchor" href="#priors-are-part-of-the-scientific-model"></a>
+</h3>
+<p>A prior on mixture coefficients should reflect the response scale and
+basis scaling.</p>
+<p>Useful sources include:</p>
+<ul>
+<li>previous experiments with comparable formulations;</li>
+<li>measurement-scale knowledge;</li>
+<li>plausible response ranges;</li>
+<li>mechanistic constraints.</li>
+</ul>
+<p>A vague prior is still a modeling choice. Report it.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="bayesian-design-is-not-bayesian-fitting">19. Bayesian design is not Bayesian fitting<a class="anchor" aria-label="anchor" href="#bayesian-design-is-not-bayesian-fitting"></a>
+</h3>
+<p>Extended Vignette 25 includes <code>BayesD</code> and
+<code>BayesI</code> <strong>design criteria</strong>, which use prior
+precision to choose experimental runs.</p>
+<p><code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code> instead performs <strong>Bayesian
+response estimation</strong> after data are observed.</p>
+<p>A study can use:</p>
+<ul>
+<li>classical design + Bayesian fit;</li>
+<li>Bayesian optimal design + frequentist fit;</li>
+<li>Bayesian design + Bayesian fit;</li>
+<li>neither.</li>
+</ul>
+<p>The two layers should be named separately.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="posterior-workflow-expectations">20. Posterior workflow expectations<a class="anchor" aria-label="anchor" href="#posterior-workflow-expectations"></a>
+</h3>
+<p>A Bayesian analysis should include, through <code>brms</code> tools
+as appropriate:</p>
+<ul>
+<li>prior inspection;</li>
+<li>prior predictive checks;</li>
+<li>convergence (<code>R-hat</code>);</li>
+<li>effective sample size;</li>
+<li>trace behavior;</li>
+<li>posterior intervals;</li>
+<li>posterior predictive checks;</li>
+<li>sensitivity to influential priors;</li>
+<li>model comparison only when scientifically justified.</li>
+</ul>
+<p><code>mixRSMflow</code> preserves the mixture semantics but does not
+exempt the analyst from the diagnostic requirements of the Bayesian
+backend.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--model-comparison-across-engines">Part VIII. Model comparison across engines<a class="anchor" aria-label="anchor" href="#part-viii--model-comparison-across-engines"></a>
+</h2>
+<div class="section level3">
+<h3 id="do-not-compare-incomparable-likelihoods-casually">21. Do not compare incomparable likelihoods casually<a class="anchor" aria-label="anchor" href="#do-not-compare-incomparable-likelihoods-casually"></a>
+</h3>
+<p>AIC/BIC comparisons are meaningful only when models are fitted to the
+same response data under compatible likelihood definitions.</p>
+<p>Examples of poor comparison:</p>
+<ul>
+<li>Gaussian OLS versus a transformed-response model without accounting
+for the transformation;</li>
+<li>REML fits with different fixed-effects structures;</li>
+<li>frequentist likelihood AIC versus a Bayesian posterior score as if
+they were identical;</li>
+<li>models using different observation subsets.</li>
+</ul>
+<p>Use <code><a href="../reference/mix_compare.html">mix_compare()</a></code> when the objects support a common
+criterion and supplement with scientific diagnostics.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="a-structured-escalation-path">22. A structured escalation path<a class="anchor" aria-label="anchor" href="#a-structured-escalation-path"></a>
+</h3>
+<p>Recommended sequence:</p>
+<ol style="list-style-type: decimal">
+<li>ordinary Gaussian mixture model if appropriate;</li>
+<li>inspect residual diagnostics;</li>
+<li>WLS if known precision differs;</li>
+<li>GLS if residual covariance/heterogeneity is supported;</li>
+<li>mixed effects if the experimental unit hierarchy requires it;</li>
+<li>non-Gaussian family if response support requires it;</li>
+<li>Bayesian fitting if posterior inference or prior information adds
+scientific value.</li>
+</ol>
+<p>Complexity should solve an identified problem.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--agronomic-case-blocked-count-response">Part IX. Agronomic case: blocked count response<a class="anchor" aria-label="anchor" href="#part-ix--agronomic-case-blocked-count-response"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-problem">23. Scientific problem<a class="anchor" aria-label="anchor" href="#scientific-problem"></a>
+</h3>
+<p>A botanical pesticide formulation has three component proportions and
+is evaluated in field blocks. The response is insect count after
+treatment.</p>
+<div class="section level4">
+<h4 id="step-1-mixture-region">Step 1: mixture region<a class="anchor" aria-label="anchor" href="#step-1-mixture-region"></a>
+</h4>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_pest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ActiveA"</span>, <span class="st">"ActiveB"</span>, <span class="st">"Adjuvant"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-2-design">Step 2: design<a class="anchor" aria-label="anchor" href="#step-2-design"></a>
+</h4>
+<p>Use the design-focused documentation to construct the run plan before
+outcomes.</p>
+</div>
+<div class="section level4">
+<h4 id="step-3-create-teaching-data">Step 3: create teaching data<a class="anchor" aria-label="anchor" href="#step-3-create-teaching-data"></a>
+</h4>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">31601</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_pest</span>,</span>
+<span>  <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">3</span></span>
+<span><span class="op">)</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">dp</span> <span class="op">&lt;-</span> <span class="va">dp</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dp</span><span class="op">)</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>, <span class="op">]</span></span>
+<span><span class="va">dp</span><span class="op">$</span><span class="va">block</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dp</span><span class="op">)</span> <span class="op">/</span> <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">dp</span>,</span>
+<span>  <span class="fl">2.0</span> <span class="op">-</span> <span class="fl">1.5</span> <span class="op">*</span> <span class="va">ActiveA</span> <span class="op">-</span> <span class="fl">1.0</span> <span class="op">*</span> <span class="va">ActiveB</span> <span class="op">+</span> <span class="fl">0.3</span> <span class="op">*</span> <span class="va">Adjuvant</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dp</span><span class="op">$</span><span class="va">count</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dp</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-4-choose-the-stochastic-model">Step 4: choose the stochastic model<a class="anchor" aria-label="anchor" href="#step-4-choose-the-stochastic-model"></a>
+</h4>
+<p>If counts are independent conditional on block and the backend
+supports the declared family, use a generalized mixed model. If
+overdispersion is strong, an alternative count distribution may be
+required through the backend.</p>
+</div>
+<div class="section level4">
+<h4 id="step-5-interpret-on-the-response-scale">Step 5: interpret on the response scale<a class="anchor" aria-label="anchor" href="#step-5-interpret-on-the-response-scale"></a>
+</h4>
+<p>A log-link coefficient is not a raw count difference. Translate
+predicted values to expected counts for scientifically relevant
+formulations.</p>
+</div>
+<div class="section level4">
+<h4 id="step-6-show-uncertainty">Step 6: show uncertainty<a class="anchor" aria-label="anchor" href="#step-6-show-uncertainty"></a>
+</h4>
+<p>Use prediction or posterior intervals appropriate to the fitted
+engine and state whether they describe the conditional mean or future
+observation variability.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--diagnostics-by-engine">Part X. Diagnostics by engine<a class="anchor" aria-label="anchor" href="#part-x--diagnostics-by-engine"></a>
+</h2>
+<div class="section level3">
+<h3 id="olswls">24. OLS/WLS<a class="anchor" aria-label="anchor" href="#olswls"></a>
+</h3>
+<p>Inspect:</p>
+<ul>
+<li>residual versus fitted pattern;</li>
+<li>Q-Q behavior;</li>
+<li>leverage;</li>
+<li>Cook distance;</li>
+<li>pure error/lack of fit where available;</li>
+<li>condition number.</li>
+</ul>
+<p>Use:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_collinearity.html">mix_collinearity</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="gls">25. GLS<a class="anchor" aria-label="anchor" href="#gls"></a>
+</h3>
+<p>In addition to mean-model diagnostics, inspect:</p>
+<ul>
+<li>fitted correlation parameter;</li>
+<li>fitted variance function;</li>
+<li>residual pattern after standardization;</li>
+<li>sensitivity to covariance structure;</li>
+<li>ML versus REML choice for comparison.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="mixed-models">26. Mixed models<a class="anchor" aria-label="anchor" href="#mixed-models"></a>
+</h3>
+<p>Inspect:</p>
+<ul>
+<li>convergence;</li>
+<li>singularity;</li>
+<li>variance components;</li>
+<li>random-effect scale;</li>
+<li>residual patterns;</li>
+<li>influential groups if the backend supports them.</li>
+</ul>
+<p>A variance component near zero can indicate the grouping effect is
+not estimable at the available information level. It does not
+automatically mean the experimental hierarchy was conceptually
+wrong.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="bayesian-models">27. Bayesian models<a class="anchor" aria-label="anchor" href="#bayesian-models"></a>
+</h3>
+<p>Inspect posterior diagnostics rather than only point summaries.</p>
+<p>A posterior interval from a poorly converged chain is not a reliable
+uncertainty statement.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--common-mistakes">Part XI. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xi--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="transforming-every-non-gaussian-response-to-force-ols">28. Transforming every non-Gaussian response to force OLS<a class="anchor" aria-label="anchor" href="#transforming-every-non-gaussian-response-to-force-ols"></a>
+</h3>
+<p>Use a response family that matches the data-generating process where
+appropriate.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="choosing-poisson-for-every-count">29. Choosing Poisson for every count<a class="anchor" aria-label="anchor" href="#choosing-poisson-for-every-count"></a>
+</h3>
+<p>Check dispersion and grouping.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="adding-random-effects-to-improve-p-values">30. Adding random effects to improve p-values<a class="anchor" aria-label="anchor" href="#adding-random-effects-to-improve-p-values"></a>
+</h3>
+<p>Random effects follow design or sampling hierarchy.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="modeling-batch-correlation-twice-without-justification">31. Modeling batch correlation twice without justification<a class="anchor" aria-label="anchor" href="#modeling-batch-correlation-twice-without-justification"></a>
+</h3>
+<p>Do not automatically combine a batch random effect and a residual
+covariance structure that represent the same dependence.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="comparing-reml-fits-with-different-fixed-effects-using-ordinary-aic-logic">32. Comparing REML fits with different fixed effects using ordinary
+AIC logic<a class="anchor" aria-label="anchor" href="#comparing-reml-fits-with-different-fixed-effects-using-ordinary-aic-logic"></a>
+</h3>
+<p>Use an appropriate comparison strategy.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="calling-bayesian-intervals-confidence-intervals">33. Calling Bayesian intervals confidence intervals<a class="anchor" aria-label="anchor" href="#calling-bayesian-intervals-confidence-intervals"></a>
+</h3>
+<p>Use the correct inferential language.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-backend-convergence-as-a-package-detail">34. Treating backend convergence as a package detail<a class="anchor" aria-label="anchor" href="#treating-backend-convergence-as-a-package-detail"></a>
+</h3>
+<p>It is a scientific validity issue.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--function-selection-guide">Part XII. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xii--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Data/design issue</th>
+<th align="left">Start with</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Gaussian independent residuals</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Known precision weights</td>
+<td align="left"><code>mix_fit(weights=...)</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Poisson/binomial ordinary response</td>
+<td align="left"><code>mix_fit(family=...)</code></td>
+</tr>
+<tr class="even">
+<td align="left">Correlated Gaussian residuals</td>
+<td align="left"><code><a href="../reference/mix_fit_gls.html">mix_fit_gls()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Heterogeneous Gaussian residuals</td>
+<td align="left"><code>mix_fit_gls(variance=...)</code></td>
+</tr>
+<tr class="even">
+<td align="left">Block/batch/whole-plot random effects</td>
+<td align="left"><code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Non-Gaussian + random effects</td>
+<td align="left">
+<code>mix_fit_mixed(family=...)</code> when backend
+supports it</td>
+</tr>
+<tr class="even">
+<td align="left">Posterior inference</td>
+<td align="left"><code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Mixture-process design construction</td>
+<td align="left">Extended Vignette 27</td>
+</tr>
+<tr class="even">
+<td align="left">Bayesian design criterion</td>
+<td align="left">Extended Vignette 25</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--reporting-checklist">Part XIII. Reporting checklist<a class="anchor" aria-label="anchor" href="#part-xiii--reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">mixture model basis;</label></li>
+<li><label><input type="checkbox">response distribution;</label></li>
+<li><label><input type="checkbox">link function;</label></li>
+<li><label><input type="checkbox">weights and their scientific
+origin;</label></li>
+<li><label><input type="checkbox">GLS covariance
+structure;</label></li>
+<li><label><input type="checkbox">GLS variance structure;</label></li>
+<li><label><input type="checkbox">ML/REML setting;</label></li>
+<li><label><input type="checkbox">random-effect formula;</label></li>
+<li><label><input type="checkbox">grouping factors and experimental
+units;</label></li>
+<li><label><input type="checkbox">generalized mixed-model family if
+used;</label></li>
+<li><label><input type="checkbox">backend
+package/version;</label></li>
+<li><label><input type="checkbox">convergence
+diagnostics;</label></li>
+<li><label><input type="checkbox">singularity or near-zero variance
+components;</label></li>
+<li><label><input type="checkbox">residual/family
+diagnostics;</label></li>
+<li><label><input type="checkbox">prior specification for Bayesian
+fit;</label></li>
+<li><label><input type="checkbox">chain/iteration
+settings;</label></li>
+<li><label><input type="checkbox">posterior convergence and predictive
+checks;</label></li>
+<li><label><input type="checkbox">interpretation on response
+scale;</label></li>
+<li><label><input type="checkbox">uncertainty type;</label></li>
+<li><label><input type="checkbox">limits of extrapolation within the
+mixture region.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--compact-engine-comparison-script">Appendix A. Compact engine comparison script<a class="anchor" aria-label="anchor" href="#appendix-a--compact-engine-comparison-script"></a>
+</h2>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">20260813</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">m_ols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">m_ols</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"nlme"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">m_gls</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_gls.html">mix_fit_gls</a></span><span class="op">(</span></span>
+<span>    <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    method <span class="op">=</span> <span class="st">"REML"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">d</span><span class="op">$</span><span class="va">batch</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">m_mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_mixed.html">mix_fit_mixed</a></span><span class="op">(</span></span>
+<span>    <span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>,</span>
+<span>    random <span class="op">=</span> <span class="st">"(1 | batch)"</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns the stochastic response/error layer. Geometry is
+in 24, design optimality in 25, alternative blending bases in 26,
+experimental randomization structure in 27, multiresponse decisions in
+28, optimum uncertainty in 29, sequential BO in 30, graphics in 32, and
+software validation in 33.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>The mixture basis answers <strong>how composition enters the
+systematic response</strong>. The family, covariance, random effects,
+and priors answer <strong>how uncertainty and dependence are
+represented</strong>.</p>
+<p>A defensible escalation path is:</p>
+<p><strong>basis -&gt; simplest plausible response model -&gt;
+diagnostics -&gt; covariance/hierarchy if required -&gt; generalized
+family if required -&gt; Bayesian extension if scientifically useful
+-&gt; prediction on the original response scale.</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-response-engine-laboratories">Appendix C. Advanced response-engine laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-response-engine-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-ols-versus-gls">C1. Laboratory: OLS versus GLS<a class="anchor" aria-label="anchor" href="#c1--laboratory-ols-versus-gls"></a>
+</h3>
+<p>Simulate heteroscedastic Gaussian residuals whose variance differs
+across a process condition. Fit ordinary OLS and an appropriate
+<code>nlme</code> GLS variance structure. Compare residual plots and
+coefficient uncertainty.</p>
+<div class="section level4">
+<h4 id="lesson">Lesson<a class="anchor" aria-label="anchor" href="#lesson"></a>
+</h4>
+<p>A change in standard errors can reflect a better error model without
+changing the mixture basis.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-batch-random-effect">C2. Laboratory: batch random effect<a class="anchor" aria-label="anchor" href="#c2--laboratory-batch-random-effect"></a>
+</h3>
+<p>Simulate four production batches with a random baseline shift and
+fit:</p>
+<ol style="list-style-type: decimal">
+<li>OLS ignoring batch;</li>
+<li>fixed batch effects;</li>
+<li>random batch intercept with <code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code>.</li>
+</ol>
+<p>Discuss which estimand is appropriate if batches are sampled from a
+broader production process.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-poisson-overdispersion-warning">C3. Laboratory: Poisson overdispersion warning<a class="anchor" aria-label="anchor" href="#c3--laboratory-poisson-overdispersion-warning"></a>
+</h3>
+<p>Generate count data with variance larger than the mean. Fit a Poisson
+mixture GLM and inspect dispersion. Explain why a different generalized
+mixed/backend distribution may be needed rather than transforming the
+count to approximate normality.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-bayesian-prior-scale-check">C4. Laboratory: Bayesian prior-scale check<a class="anchor" aria-label="anchor" href="#c4--laboratory-bayesian-prior-scale-check"></a>
+</h3>
+<p>Before a <code>brms</code> fit, translate plausible response ranges
+into coefficient-prior scales. Compare a very wide prior with a
+moderately regularizing prior through prior predictive simulation in the
+backend.</p>
+<div class="section level4">
+<h4 id="lesson-1">Lesson<a class="anchor" aria-label="anchor" href="#lesson-1"></a>
+</h4>
+<p>Prior scale must be interpreted relative to the mixture basis and
+link function.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--response-engine-troubleshooting-matrix">Appendix D. Response-engine troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--response-engine-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely issue</th>
+<th align="left">Response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">residual funnel under OLS</td>
+<td align="left">heteroscedasticity</td>
+<td align="left">consider weights/GLS if scientifically supported</td>
+</tr>
+<tr class="even">
+<td align="left">residual correlation by batch/time</td>
+<td align="left">ignored dependence</td>
+<td align="left">GLS or mixed structure depending mechanism</td>
+</tr>
+<tr class="odd">
+<td align="left">mixed model singular</td>
+<td align="left">unsupported random variance/correlation</td>
+<td align="left">inspect hierarchy and replication</td>
+</tr>
+<tr class="even">
+<td align="left">Poisson residual variance too large</td>
+<td align="left">overdispersion</td>
+<td align="left">use appropriate count backend/model</td>
+</tr>
+<tr class="odd">
+<td align="left">Bayesian chains have high R-hat</td>
+<td align="left">nonconvergence</td>
+<td align="left">improve model/prior/sampling; do not interpret</td>
+</tr>
+<tr class="even">
+<td align="left">posterior dominated by prior</td>
+<td align="left">weak data or too-informative prior</td>
+<td align="left">perform sensitivity analysis</td>
+</tr>
+<tr class="odd">
+<td align="left">GLS and mixed fit differ greatly</td>
+<td align="left">structures answer different dependence questions</td>
+<td align="left">revisit experimental unit logic</td>
+</tr>
+<tr class="even">
+<td align="left">AIC compared across incompatible fits</td>
+<td align="left">invalid comparison</td>
+<td align="left">use compatible likelihood/inference framework</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-response-model-exercises">Appendix E. Guided response-model exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-response-model-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--family-support">Exercise 1. Family support<a class="anchor" aria-label="anchor" href="#exercise-1--family-support"></a>
+</h4>
+<p>List the response support and a plausible family/link for counts,
+proportions from counts, positive continuous concentration, and Gaussian
+yield.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--weights">Exercise 2. Weights<a class="anchor" aria-label="anchor" href="#exercise-2--weights"></a>
+</h4>
+<p>Construct a scenario where one formulation mean is based on 20
+subsamples and another on 5. Explain when precision weights are
+justified.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--gls-covariance">Exercise 3. GLS covariance<a class="anchor" aria-label="anchor" href="#exercise-3--gls-covariance"></a>
+</h4>
+<p>Describe the difference between heteroscedasticity across process
+settings and correlation among repeated observations.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--random-batch">Exercise 4. Random batch<a class="anchor" aria-label="anchor" href="#exercise-4--random-batch"></a>
+</h4>
+<p>Explain why batch can be random even though the mixture components
+are fixed design variables.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--whole-plots">Exercise 5. Whole plots<a class="anchor" aria-label="anchor" href="#exercise-5--whole-plots"></a>
+</h4>
+<p>Translate <code>.whole_plot</code> from Extended Vignette 27 into a
+random-intercept formula.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--overdispersion">Exercise 6. Overdispersion<a class="anchor" aria-label="anchor" href="#exercise-6--overdispersion"></a>
+</h4>
+<p>Explain why a Poisson model can underestimate uncertainty when
+conditional variance exceeds mean.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--link-interpretation">Exercise 7. Link interpretation<a class="anchor" aria-label="anchor" href="#exercise-7--link-interpretation"></a>
+</h4>
+<p>Convert a log-link coefficient contrast into a response ratio
+interpretation.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--bayesian-prior">Exercise 8. Bayesian prior<a class="anchor" aria-label="anchor" href="#exercise-8--bayesian-prior"></a>
+</h4>
+<p>Choose priors for a response measured between roughly 0 and 100 and
+explain why <code>normal(0,1000)</code> may be less useful than a
+scale-aware prior.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--bayesian-design-distinction">Exercise 9. Bayesian design distinction<a class="anchor" aria-label="anchor" href="#exercise-9--bayesian-design-distinction"></a>
+</h4>
+<p>Write two sentences distinguishing <code>criterion="BayesI"</code>
+from <code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code>.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--prediction-scale">Exercise 10. Prediction scale<a class="anchor" aria-label="anchor" href="#exercise-10--prediction-scale"></a>
+</h4>
+<p>Explain the difference between linear-predictor and response-scale
+predictions in a GLM.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--model-comparison">Exercise 11. Model comparison<a class="anchor" aria-label="anchor" href="#exercise-11--model-comparison"></a>
+</h4>
+<p>State when ML rather than REML is required for fixed-effect
+comparison in Gaussian mixed models.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A paper says “a mixed model was used” without random-effect formula
+or experimental unit. Draft the minimum information needed.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-stochastic-model-audit">Appendix F. Reviewer-style stochastic-model audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-stochastic-model-audit"></a>
+</h2>
+<p>Check:</p>
+<ol style="list-style-type: decimal">
+<li>response support and units;</li>
+<li>family and link;</li>
+<li>weights;</li>
+<li>covariance structure;</li>
+<li>variance structure;</li>
+<li>fixed mixture basis;</li>
+<li>process terms;</li>
+<li>random effects and grouping units;</li>
+<li>backend/version;</li>
+<li>convergence/singularity;</li>
+<li>residual/family diagnostics;</li>
+<li>priors and sampling diagnostics for Bayes;</li>
+<li>response-scale interpretation;</li>
+<li>compatible model-comparison method.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="gls-1">GLS<a class="anchor" aria-label="anchor" href="#gls-1"></a>
+</h4>
+<blockquote>
+<p>The Scheffé quadratic mean structure was retained while residual
+covariance was modeled using the declared GLS structure. Thus, the
+composition-response estimand remained unchanged while uncertainty
+accounted for the observed dependence/heterogeneity.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="random-batch">Random batch<a class="anchor" aria-label="anchor" href="#random-batch"></a>
+</h4>
+<blockquote>
+<p>Production batch was modeled as a random intercept because batches
+represented a sample from a broader production process. Mixture
+composition remained a fixed designed predictor.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="count-model">Count model<a class="anchor" aria-label="anchor" href="#count-model"></a>
+</h4>
+<blockquote>
+<p>Expected counts were modeled on the log scale using the mixture
+basis. Effects are therefore interpreted through multiplicative changes
+in expected response rather than raw additive count differences.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="bayesian-fit">Bayesian fit<a class="anchor" aria-label="anchor" href="#bayesian-fit"></a>
+</h4>
+<blockquote>
+<p>Bayesian estimation used the same declared mixture basis with
+explicit priors and posterior diagnostics. Posterior intervals are
+reported as credible intervals and are not described as frequentist
+confidence intervals.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-response-engine-case-bank">Appendix H. Applied response-engine case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-response-engine-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--heterogeneous-assay-precision">H1. Heterogeneous assay precision<a class="anchor" aria-label="anchor" href="#h1--heterogeneous-assay-precision"></a>
+</h3>
+<p>A biochemical response is measured with different laboratory
+replication across formulations. If known measurement precision differs,
+WLS can weight observations appropriately. The weight definition must
+come from the measurement process rather than from a desire to reduce
+residuals. If variability depends systematically on a process variable,
+GLS variance structures may be more appropriate.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--greenhouse-blocks">H2. Greenhouse blocks<a class="anchor" aria-label="anchor" href="#h2--greenhouse-blocks"></a>
+</h3>
+<p>A mixture experiment is replicated across greenhouse benches.
+Bench-to-bench differences can be modeled as random if benches represent
+a sample from a broader operational population. The mixture basis
+remains fixed. A random bench effect changes covariance among
+observations, not the definition of the formulation region.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--pest-counts">H3. Pest counts<a class="anchor" aria-label="anchor" href="#h3--pest-counts"></a>
+</h3>
+<p>Counts after treatment are nonnegative integers. A Poisson mixture
+GLM can be a starting point, but biological counts often show
+overdispersion or clustering. If variance greatly exceeds the mean, a
+different count distribution or generalized mixed backend is needed.
+Transforming <code>sqrt(count)</code> by habit can obscure the natural
+mean-variance structure.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--disease-incidence">H4. Disease incidence<a class="anchor" aria-label="anchor" href="#h4--disease-incidence"></a>
+</h3>
+<p>A response such as diseased plants out of 20 should use binomial
+sampling logic rather than treating the observed proportion as Gaussian
+automatically. If observations are grouped in blocks, the sampling
+family and experimental random effects both matter.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--bayesian-small-sample-formulation">H5. Bayesian small-sample formulation<a class="anchor" aria-label="anchor" href="#h5--bayesian-small-sample-formulation"></a>
+</h3>
+<p>A small expensive experiment has prior information from a previous
+formulation version. A Bayesian mixture fit can use that information
+transparently, provided prior transferability is justified. Posterior
+predictive checks and prior sensitivity are essential. This is separate
+from using a Bayesian optimal-design criterion before data
+collection.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-response-engine-review">Appendix I. Short-answer response-engine review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-response-engine-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>What does the mixture basis describe?</strong> Systematic
+composition-response structure.</li>
+<li>
+<strong>What does the family describe?</strong> Conditional response
+distribution/link.</li>
+<li>
+<strong>What does GLS add?</strong> Residual
+covariance/heterogeneity for Gaussian responses.</li>
+<li>
+<strong>What does a random effect represent?</strong> Group-level
+variation tied to design or sampling.</li>
+<li>
+<strong>Why not use random effects to improve p-values?</strong>
+They must reflect experimental structure.</li>
+<li>
+<strong>What indicates Poisson overdispersion?</strong> Conditional
+variance substantially exceeding the mean.</li>
+<li>
+<strong>What must a Bayesian fit report?</strong> Priors, sampling
+settings, convergence, posterior checks.</li>
+<li>
+<strong>Are BayesI design and <code><a href="../reference/mix_fit_bayes.html">mix_fit_bayes()</a></code> the
+same?</strong> No; one chooses runs, the other estimates a response
+model.</li>
+<li>
+<strong>Why interpret on the response scale?</strong> Links such as
+log/logit change coefficient meaning.</li>
+<li>
+<strong>When should complexity stop?</strong> When the simplest
+scientifically plausible model adequately describes dependence and
+response support.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-stochastic-modeling">Appendix J. Deeper conceptual notes on stochastic modeling<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-stochastic-modeling"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--the-mean-model-can-be-correct-while-the-error-model-is-wrong">J1. The mean model can be correct while the error model is
+wrong<a class="anchor" aria-label="anchor" href="#j1--the-mean-model-can-be-correct-while-the-error-model-is-wrong"></a>
+</h3>
+<p>A Scheffé quadratic surface may capture the expected response well
+while residual variance changes across process conditions or
+observations remain correlated within batches. In that case, changing to
+GLS or a mixed model can improve uncertainty quantification without
+changing the scientific mean-response hypothesis. This distinction is
+important when explaining why coefficient estimates remain similar but
+standard errors change.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--random-effects-do-not-repair-confounding">J2. Random effects do not repair confounding<a class="anchor" aria-label="anchor" href="#j2--random-effects-do-not-repair-confounding"></a>
+</h3>
+<p>If a treatment is applied only once within a batch, adding a random
+batch effect cannot magically separate treatment from batch. Random
+effects represent covariance and population heterogeneity, but
+estimability still depends on the design. Experimental structure must be
+considered before model complexity.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--link-scale-versus-response-scale-interpretation">J3. Link-scale versus response-scale interpretation<a class="anchor" aria-label="anchor" href="#j3--link-scale-versus-response-scale-interpretation"></a>
+</h3>
+<p>In Poisson or binomial models, mixture terms act on the
+linear-predictor scale. A coefficient difference may correspond to a
+response ratio or odds ratio, not an additive raw-scale difference.
+Publication tables should therefore include response-scale predictions
+for meaningful formulations in addition to link-scale coefficients.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--bayesian-regularization-and-prior-transfer">J4. Bayesian regularization and prior transfer<a class="anchor" aria-label="anchor" href="#j4--bayesian-regularization-and-prior-transfer"></a>
+</h3>
+<p>Prior information can stabilize small experiments, but only when its
+scale and transferability are credible. Priors from a previous crop,
+formulation, or assay should not be transferred automatically.
+Sensitivity analysis with weaker priors helps reveal how much the
+posterior conclusion depends on historical information.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--engine-specific-diagnostics-remain-essential">J5. Engine-specific diagnostics remain essential<a class="anchor" aria-label="anchor" href="#j5--engine-specific-diagnostics-remain-essential"></a>
+</h3>
+<p><code>mixRSMflow</code> provides common semantics, but it does not
+reduce every backend to identical diagnostics. <code>nlme</code>,
+<code>lme4</code>, generalized mixed engines, and <code>brms</code> each
+have specialized convergence and residual tools. Advanced users should
+consult the backend diagnostics after the common mixture workflow
+identifies the appropriate model class.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

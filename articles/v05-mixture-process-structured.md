@@ -1,3 +1,1232 @@
 # Mixture-process and structured experiments
 
-**Extended tutorial not found.**
+## mixRSMflow: Mixture-Process, Mixture-Amount, Blocking, and Split-Plot Experiments
+
+**Extended instructional vignette**  
+**Package:** `mixRSMflow`  
+**Version targeted:** `0.1.0.9000`  
+**Extended vignette:** 27  
+**Format:** Markdown source only  
+**Primary ownership:** mixture-process design, process fractionation,
+mixture-amount experiments, blocks, Latin-style process layouts,
+hard-to-change factors, split-plot identifiers, design hierarchy and
+mixed-model linkage  
+**Companion material:** `10-mixture-process.Rmd`,
+`11-blocks-and-splitplots.Rmd`
+
+> This document is intentionally supplied as `.md`. It treats
+> experimental structure as a consequence of randomization and
+> operations. It does not re-teach the general theory of
+> GLM/GLS/Bayesian response models, which belongs to Extended Vignette
+> 31.
+
+> **Scope boundary.** This extended vignette owns the topic named in its
+> title. Closely related methods that belong to another extended
+> vignette are referenced rather than re-taught. This separation is
+> deliberate so that the extended documentation remains deep without
+> becoming repetitive.
+
+------------------------------------------------------------------------
+
+### 1. Why composition is sometimes only half the experiment
+
+A formulation can perform differently depending on how it is processed,
+applied, stored, cured, sprayed, heated, irrigated, or manufactured.
+Mixture-process experiments combine:
+
+- constrained component proportions;
+- ordinary controllable process factors.
+
+The two types of variables must not be treated as if they have the same
+geometry.
+
+A process variable such as temperature can vary independently within its
+range. A mixture component cannot vary independently because the
+component total remains fixed.
+
+The central rule is:
+
+**Preserve the mixture constraint in the basis and preserve the
+experimental randomization in the error structure.**
+
+------------------------------------------------------------------------
+
+### 2. Learning objectives
+
+After this vignette, the reader should be able to:
+
+1.  build a mixture-process design by crossing a mixture design with
+    process settings;
+2.  explain the distinction between mixture and process terms;
+3.  fit process polynomial terms together with a Scheffé mixture basis;
+4.  include mixture-process interactions explicitly;
+5.  fractionate a large crossed design using D-information or random
+    subsampling;
+6.  state what information may be lost through fractionation;
+7.  design mixture-amount experiments;
+8.  create blocks that reduce imbalance in model columns;
+9.  inspect block diagnostics instead of assuming exact orthogonality;
+10. construct Latin-style arrangements for two process factors;
+11. identify hard-to-change factors before randomization;
+12. create split-plot identifiers with `mix_design(type="split_plot")`;
+13. connect `.whole_plot` and `.subplot` identifiers to
+    [`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md);
+14. distinguish block design from residual covariance modeling;
+15. report process settings, whole-plot structure, and fractionation
+    transparently;
+16. build an integrated agronomic mixture-process workflow.
+
+------------------------------------------------------------------------
+
+### 3. Function map
+
+| Task | Function |
+|:---|:---|
+| Generate mixture-process design | `mix_design(type="mixture_process")` |
+| Generate mixture-amount design | `mix_design(type="mixture_amount")` |
+| Create split-plot design identifiers | `mix_design(type="split_plot")` |
+| Fractionate a process-crossed design | [`mix_fractionate_process()`](https://wep69.github.io/mixRSMflow/reference/mix_fractionate_process.md) |
+| Allocate runs to blocks | [`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md) |
+| Create Latin-style process arrangement | [`mix_latin_process_design()`](https://wep69.github.io/mixRSMflow/reference/mix_latin_process_design.md) |
+| Build combined model matrix | `mix_basis(..., process=, mixture_process=TRUE)` |
+| Fit combined fixed model | [`mix_fit()`](https://wep69.github.io/mixRSMflow/reference/mix_fit.md) |
+| Fit hierarchical model | [`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md) |
+| Design diagnostics | [`mix_design_eval()`](https://wep69.github.io/mixRSMflow/reference/mix_design_eval.md) |
+| Prediction/graphics | [`mix_predict()`](https://wep69.github.io/mixRSMflow/reference/mix_predict.md), [`mix_plot()`](https://wep69.github.io/mixRSMflow/reference/mix_plot.md) |
+
+------------------------------------------------------------------------
+
+## Part I. Mixture-process foundations
+
+### 4. Agronomic example: biostimulant formulation and application conditions
+
+Suppose a foliar formulation contains:
+
+- amino-acid fraction `AA`;
+- seaweed fraction `SW`;
+- humic fraction `HA`.
+
+The response may also depend on:
+
+- spray volume;
+- application temperature.
+
+Create the mixture region:
+
+``` r
+
+library(mixRSMflow)
+
+sp <- mix_spec(
+  c("AA", "SW", "HA"),
+  lower = c(0.05, 0.05, 0.05),
+  upper = c(0.80, 0.80, 0.80)
+)
+```
+
+------------------------------------------------------------------------
+
+### 5. Full crossed mixture-process design
+
+``` r
+
+mp <- mix_design(
+  spec = sp,
+  type = "mixture_process",
+  base_type = "simplex_centroid",
+  process = list(
+    spray_volume = c(20, 40),
+    temperature = c(20, 30, 40)
+  ),
+  degree = 2,
+  seed = 27001
+)
+
+head(mp$data)
+```
+
+The mixture rows preserve the fixed-sum constraint. Process variables
+are then crossed with those mixtures.
+
+#### Design-size calculation
+
+If the base mixture design has `n_m` blends and the process grid has
+`n_p` combinations, the complete cross has
+
+``` math
+n=n_m n_p
+```
+
+runs before replication or fractionation.
+
+This can grow rapidly.
+
+------------------------------------------------------------------------
+
+## Part II. Combined model basis
+
+### 6. Inspect the basis before fitting
+
+``` r
+
+Xmp <- mix_basis(
+  mp$data,
+  sp,
+  model = "scheffe_quadratic",
+  process = c("spray_volume", "temperature"),
+  process_order = 2,
+  mixture_process = TRUE
+)
+
+colnames(Xmp)
+```
+
+The basis contains:
+
+- mixture terms;
+- process terms up to the declared order;
+- mixture-process interactions when requested.
+
+#### Interpretation boundary
+
+A term such as `SW × temperature` means the blending contribution
+associated with the seaweed component changes across temperature. It
+does not mean SW and temperature are two ordinary independent factors in
+a common factorial cube.
+
+------------------------------------------------------------------------
+
+### 7. Simulate a teaching response
+
+``` r
+
+set.seed(27002)
+
+mp$data$response <- with(
+  mp$data,
+  5.0 * AA +
+  7.0 * SW +
+  6.0 * HA +
+  2.0 * AA * SW -
+  1.5 * AA * HA +
+  0.025 * spray_volume +
+  0.040 * temperature +
+  0.020 * SW * temperature +
+  rnorm(nrow(mp$data), 0, 0.20)
+)
+```
+
+Fit:
+
+``` r
+
+fit_mp <- mix_fit(
+  response = "response",
+  data = mp,
+  model = "scheffe_quadratic",
+  process = c("spray_volume", "temperature"),
+  process_order = 2,
+  mixture_process = TRUE
+)
+
+summary(fit_mp)
+```
+
+------------------------------------------------------------------------
+
+### 8. Predict at specific process settings
+
+``` r
+
+new_mp <- data.frame(
+  AA = c(0.20, 0.40, 0.25),
+  SW = c(0.50, 0.30, 0.25),
+  HA = c(0.30, 0.30, 0.50),
+  spray_volume = c(30, 30, 30),
+  temperature = c(25, 25, 25)
+)
+
+mix_predict(
+  fit_mp,
+  newdata = new_mp,
+  interval = "confidence"
+)
+```
+
+A mixture-process surface should generally be interpreted at declared
+process settings or through process slices. A single ternary surface
+cannot represent all process combinations simultaneously.
+
+------------------------------------------------------------------------
+
+## Part III. Fractionating a large crossed design
+
+### 9. Why fractionation is needed
+
+Suppose the process variables have:
+
+- three temperature levels;
+- three spray-volume levels;
+- three drying-time levels.
+
+A modest mixture design crossed with 27 process combinations can become
+expensive.
+
+``` r
+
+mp_large <- mix_design(
+  sp,
+  type = "mixture_process",
+  base_type = "simplex_centroid",
+  process = list(
+    temperature = c(20, 30, 40),
+    spray_volume = c(20, 30, 40),
+    dry_time = c(1, 2, 3)
+  ),
+  degree = 2
+)
+```
+
+------------------------------------------------------------------------
+
+### 10. D-information fractionation
+
+``` r
+
+mp_half <- mix_fractionate_process(
+  design = mp_large,
+  process = c("temperature", "spray_volume", "dry_time"),
+  fraction = 0.50,
+  model = "scheffe_quadratic",
+  process_order = 2,
+  mixture_process = TRUE,
+  seed = 27101,
+  exchange_iter = 500
+)
+
+mp_half
+```
+
+The fractionation objective is model-dependent. A design that supports
+first-order process effects may not adequately support quadratic process
+terms and all mixture-process interactions.
+
+#### Reporting rule
+
+State:
+
+- original number of candidate runs;
+- retained fraction or number of runs;
+- fractionation method;
+- protected model basis;
+- seed;
+- final design diagnostics.
+
+------------------------------------------------------------------------
+
+### 11. Random fractionation as a benchmark
+
+``` r
+
+mp_random <- mix_design(
+  sp,
+  type = "mixture_process",
+  base_type = "simplex_centroid",
+  process = list(
+    temperature = c(20, 30, 40),
+    spray_volume = c(20, 30, 40)
+  ),
+  fraction = 0.50,
+  fraction_method = "random",
+  seed = 27102
+)
+```
+
+Random fractionation can be useful as a simple baseline, but do not
+assume it preserves the intended model as efficiently as a model-based
+fraction.
+
+------------------------------------------------------------------------
+
+## Part IV. Mixture-amount experiments
+
+### 12. Composition and total amount
+
+A mixture experiment usually fixes the total and varies only
+proportions. Some applications need both composition and total amount.
+
+Example: a foliar treatment contains three active fractions, while the
+total concentration can be 50, 100, or 150 units.
+
+``` r
+
+ma <- mix_design(
+  sp,
+  type = "mixture_amount",
+  base_type = "simplex_centroid",
+  amount = c(50, 100, 150)
+)
+
+head(ma$data)
+```
+
+#### Interpretation
+
+Composition and amount answer different questions:
+
+- composition asks how the relative blend changes the response;
+- amount asks how much total material is applied.
+
+A response can be optimal in composition at one total amount and not at
+another.
+
+------------------------------------------------------------------------
+
+## Part V. Blocking
+
+### 13. Why block a mixture experiment?
+
+Runs may occur across:
+
+- field blocks;
+- greenhouse benches;
+- manufacturing days;
+- operators;
+- instrument sessions;
+- experimental batches.
+
+Blocking should be declared before randomization when possible.
+
+Create a base design:
+
+``` r
+
+base <- mix_design(
+  sp,
+  type = "simplex_lattice",
+  degree = 3
+)
+```
+
+Allocate to two blocks:
+
+``` r
+
+bd <- mix_block_design(
+  base,
+  n_blocks = 2,
+  model = "scheffe_quadratic",
+  iterations = 5000,
+  seed = 27201
+)
+
+bd$block_diagnostics
+```
+
+------------------------------------------------------------------------
+
+### 14. Orthogonality is an achieved property, not a label
+
+[`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md)
+uses a search procedure to reduce imbalance of standardized model
+columns among blocks.
+
+Inspect the diagnostics.
+
+Do not report the blocks as orthogonal unless the numerical criterion
+actually supports that statement.
+
+#### Practical rule
+
+A slightly less balanced block assignment may be preferable if it avoids
+impossible run logistics or improves randomization credibility.
+
+------------------------------------------------------------------------
+
+## Part VI. Latin-style process arrangements
+
+### 15. Two process variables
+
+``` r
+
+lat <- mix_latin_process_design(
+  spec = sp,
+  process1 = list(
+    temperature = c(20, 30, 40)
+  ),
+  process2 = list(
+    drying_time = c(1, 2, 3)
+  ),
+  base_type = "simplex_centroid",
+  degree = 2,
+  seed = 27301
+)
+
+head(lat$data)
+```
+
+A Latin-style layout can balance two process dimensions while the
+mixture portion follows its own design.
+
+#### Scientific caution
+
+Mathematical balance does not override physical randomization. If
+temperature requires a chamber setting that cannot be changed freely, a
+split-plot structure may be more realistic.
+
+------------------------------------------------------------------------
+
+## Part VII. Hard-to-change factors and split plots
+
+### 16. Why split plots arise naturally
+
+Suppose spray volume can be changed quickly but application temperature
+requires resetting an environmental chamber. Temperature is hard to
+change.
+
+A fully randomized run order may be operationally impossible.
+
+``` r
+
+sp_split <- mix_design(
+  sp,
+  type = "split_plot",
+  base_type = "simplex_centroid",
+  process = list(
+    temperature = c(20, 40),
+    spray_volume = c(20, 40)
+  ),
+  hard_to_change = "temperature",
+  seed = 27401
+)
+
+head(sp_split$data)
+```
+
+The design creates identifiers such as:
+
+- `.whole_plot`;
+- `.subplot`.
+
+These identifiers represent the experimental hierarchy and should flow
+into the model.
+
+------------------------------------------------------------------------
+
+### 17. Why ordinary OLS is not enough for a split plot
+
+Observations within the same whole plot share an experimental unit and
+are not independent replicates for the hard-to-change factor.
+
+An analysis that fits every process and mixture term with one residual
+error can use the wrong error information.
+
+Use
+[`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md)
+when the hierarchy requires random effects.
+
+------------------------------------------------------------------------
+
+### 18. Fit a hierarchical mixture-process model
+
+Create a teaching response:
+
+``` r
+
+set.seed(27402)
+
+sp_split$data$response <- with(
+  sp_split$data,
+  5 * AA + 7 * SW + 6 * HA +
+  0.04 * temperature +
+  0.02 * spray_volume +
+  rnorm(nrow(sp_split$data), 0, 0.20)
+)
+```
+
+Fit when `lme4` is available:
+
+``` r
+
+if (requireNamespace("lme4", quietly = TRUE)) {
+  fit_split <- mix_fit_mixed(
+    response = "response",
+    data = sp_split,
+    random = "(1 | .whole_plot)",
+    model = "scheffe_quadratic",
+    process = c("temperature", "spray_volume"),
+    mixture_process = TRUE
+  )
+
+  fit_split
+}
+```
+
+#### Interpretation
+
+The random term is not a convenience. It represents variation among
+whole plots created by the restricted randomization.
+
+------------------------------------------------------------------------
+
+## Part VIII. Blocks versus random effects
+
+### 19. Design and analysis layers
+
+[`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md)
+creates the allocation.
+[`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md)
+estimates a model that can represent grouped experimental variation.
+
+These are related but distinct layers.
+
+A well-blocked experiment can still be analyzed incorrectly if the block
+structure is ignored. A mixed model cannot recreate randomization
+information that was never recorded.
+
+------------------------------------------------------------------------
+
+## Part IX. A complete agronomic mixture-process case study
+
+### 20. Scientific question
+
+A foliar biostimulant contains amino acids, seaweed extract, and humic
+substances. Researchers want to identify formulations that perform well
+across application conditions.
+
+Composition:
+
+``` math
+AA+SW+HA=1.
+```
+
+Process variables:
+
+- spray volume: 20, 30, 40 L/ha equivalent;
+- chamber temperature: 20, 30, 40 degrees C.
+
+Temperature is hard to change.
+
+#### Step 1: specification
+
+``` r
+
+sp <- mix_spec(
+  c("AA", "SW", "HA"),
+  lower = c(0.05, 0.05, 0.05),
+  upper = c(0.80, 0.80, 0.80)
+)
+```
+
+#### Step 2: split-plot design
+
+``` r
+
+design <- mix_design(
+  sp,
+  type = "split_plot",
+  base_type = "simplex_centroid",
+  process = list(
+    temperature = c(20, 30, 40),
+    spray_volume = c(20, 30, 40)
+  ),
+  hard_to_change = "temperature",
+  seed = 27501
+)
+```
+
+#### Step 3: randomize according to the actual physical protocol
+
+The package identifiers support the structure, but the laboratory or
+field randomization should be documented independently.
+
+#### Step 4: enter observed response
+
+``` r
+
+# Teaching simulation only.
+set.seed(27502)
+
+design$data$biomass <- with(
+  design$data,
+  20 +
+  6 * AA + 9 * SW + 7 * HA +
+  3 * AA * SW +
+  0.05 * temperature +
+  0.03 * spray_volume +
+  0.02 * SW * temperature +
+  rnorm(nrow(design$data), 0, 0.5)
+)
+```
+
+#### Step 5: hierarchical fit
+
+``` r
+
+if (requireNamespace("lme4", quietly = TRUE)) {
+  fit <- mix_fit_mixed(
+    response = "biomass",
+    data = design,
+    random = "(1 | .whole_plot)",
+    model = "scheffe_quadratic",
+    process = c("temperature", "spray_volume"),
+    mixture_process = TRUE
+  )
+}
+```
+
+#### Step 6: diagnostics
+
+``` r
+
+if (exists("fit")) {
+  mix_diagnose(fit)
+}
+```
+
+#### Step 7: process-conditioned predictions
+
+``` r
+
+newdata <- data.frame(
+  AA = c(0.20, 0.35, 0.50),
+  SW = c(0.50, 0.35, 0.20),
+  HA = c(0.30, 0.30, 0.30),
+  temperature = 30,
+  spray_volume = 30
+)
+
+if (exists("fit")) {
+  mix_predict(fit, newdata)
+}
+```
+
+#### Step 8: report the design hierarchy
+
+A manuscript should state that temperature was applied at the whole-plot
+level, how whole plots were randomized, which mixture/process factors
+varied within whole plots, and which random term represented the
+restricted randomization.
+
+------------------------------------------------------------------------
+
+## Part X. Fractionation and split plots together
+
+### 21. Do not fractionate blindly before hierarchy is defined
+
+When a process factor is hard to change, the candidate design should
+respect the grouping before or during fractionation.
+
+Otherwise a nominally efficient fraction can be impossible to execute
+without breaking the intended whole-plot structure.
+
+Recommended sequence:
+
+1.  define mixture region;
+2.  define process levels;
+3.  identify hard-to-change factors;
+4.  construct candidate combinations;
+5.  impose feasible whole-plot organization;
+6.  fractionate or optimize within the actual operational constraints;
+7.  document randomization.
+
+------------------------------------------------------------------------
+
+## Part XI. Common mistakes
+
+### 22. Treating process factors as mixture components
+
+They do not share the fixed-sum constraint.
+
+------------------------------------------------------------------------
+
+### 23. Treating mixture components as ordinary process factors
+
+Their effects cannot be interpreted with all other components held
+constant.
+
+------------------------------------------------------------------------
+
+### 24. Crossing every process level and later deleting inconvenient runs
+
+Plan fractionation before response observation.
+
+------------------------------------------------------------------------
+
+### 25. Reporting a fraction without the protected model
+
+Fractionation is model-dependent.
+
+------------------------------------------------------------------------
+
+### 26. Calling a blocked design orthogonal without checking diagnostics
+
+Inspect `block_diagnostics`.
+
+------------------------------------------------------------------------
+
+### 27. Ignoring whole plots in analysis
+
+Use the correct random structure.
+
+------------------------------------------------------------------------
+
+### 28. Adding a random effect merely because `lme4` is available
+
+Random effects should follow the experimental hierarchy.
+
+------------------------------------------------------------------------
+
+### 29. Using the same ternary surface for every process setting
+
+A mixture-process response surface changes with process conditions when
+interactions exist.
+
+------------------------------------------------------------------------
+
+## Part XII. Function-selection guide
+
+| Experimental feature | Function |
+|:---|:---|
+| Mixture + ordinary process factors | `mix_design(type="mixture_process")` |
+| Composition + total amount | `mix_design(type="mixture_amount")` |
+| Large process cross must be reduced | [`mix_fractionate_process()`](https://wep69.github.io/mixRSMflow/reference/mix_fractionate_process.md) |
+| Block allocation | [`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md) |
+| Two balanced process factors | [`mix_latin_process_design()`](https://wep69.github.io/mixRSMflow/reference/mix_latin_process_design.md) |
+| Hard-to-change process factor | `mix_design(type="split_plot")` |
+| Combined fixed model | [`mix_fit()`](https://wep69.github.io/mixRSMflow/reference/mix_fit.md) |
+| Whole-plot/random experimental unit | [`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md) |
+| Prediction at fixed process settings | [`mix_predict()`](https://wep69.github.io/mixRSMflow/reference/mix_predict.md) |
+| General GLS/Bayesian response extensions | Extended Vignette 31 |
+
+------------------------------------------------------------------------
+
+## Part XIII. Reporting checklist
+
+mixture components and constraints;
+
+process-variable names, units, and levels;
+
+base mixture design;
+
+process design/grid;
+
+whether the design was complete or fractionated;
+
+fractionation objective;
+
+protected model basis;
+
+random seed;
+
+blocking factors;
+
+block-allocation method and diagnostics;
+
+hard-to-change factors;
+
+whole-plot and subplot definitions;
+
+physical randomization protocol;
+
+combined mixture/process basis;
+
+mixture-process interactions;
+
+random-effects model if used;
+
+process settings used for reported surfaces/predictions;
+
+evidence that the final design was operationally executable.
+
+------------------------------------------------------------------------
+
+## Appendix A. Minimal mixture-process script
+
+``` r
+
+library(mixRSMflow)
+
+sp <- mix_spec(c("A", "B", "C"))
+
+mp <- mix_design(
+  sp,
+  type = "mixture_process",
+  base_type = "simplex_centroid",
+  process = list(
+    temperature = c(20, 40),
+    time = c(1, 3)
+  ),
+  degree = 2,
+  seed = 20260813
+)
+
+set.seed(20260813)
+mp$data$y <- with(
+  mp$data,
+  4 * A + 6 * B + 5 * C +
+  0.03 * temperature +
+  A * temperature / 20 +
+  rnorm(nrow(mp$data), 0, 0.05)
+)
+
+fit <- mix_fit(
+  "y",
+  mp,
+  model = "scheffe_quadratic",
+  process = c("temperature", "time"),
+  mixture_process = TRUE
+)
+
+summary(fit)
+mix_diagnose(fit)
+```
+
+------------------------------------------------------------------------
+
+## Appendix B. Boundary with other extended vignettes
+
+This vignette owns experimental structure. It does not re-teach
+optimality criteria (25), alternative blending bases (26), multiresponse
+decision rules (28), optimum uncertainty (29), adaptive sequential BO
+(30), general response-engine theory (31), graphics (32), or
+validation/release engineering (33).
+
+------------------------------------------------------------------------
+
+## Final perspective
+
+A mixture-process experiment has two simultaneous geometries:
+
+- a constrained mixture geometry;
+- an ordinary process-factor geometry.
+
+When hard-to-change factors are present, it also has an experimental
+hierarchy.
+
+The defensible sequence is:
+
+**mixture region -\> process region -\> operational constraints -\>
+combined design -\> fractionation/blocking if required -\> randomization
+-\> hierarchical model -\> process-conditioned interpretation.**
+
+------------------------------------------------------------------------
+
+## Appendix C. Advanced structured-design laboratories
+
+### C1. Laboratory: quantify design explosion
+
+Create a mixture-process design with a 10-point mixture design and three
+process factors having 3, 3, and 2 levels. Calculate the complete run
+count before generating the design. Then construct a 50% D-fraction.
+
+#### Questions
+
+- How many runs are saved?
+- Which model terms are protected by the fractionation call?
+- Would a random 50% fraction preserve the same information?
+- Which process interactions are scientifically essential?
+
+------------------------------------------------------------------------
+
+### C2. Laboratory: whole-plot identification
+
+Construct a split-plot design with temperature as the hard-to-change
+factor. Tabulate `.whole_plot` by temperature and verify that the
+grouping matches the intended operational restriction.
+
+``` r
+
+sp_lab <- mix_spec(c("A", "B", "C"))
+
+Ds <- mix_design(
+  sp_lab,
+  type = "split_plot",
+  process = list(temp = c(20,40), volume = c(20,40)),
+  hard_to_change = "temp",
+  seed = 271001
+)
+
+table(Ds$data$.whole_plot, Ds$data$temp)
+```
+
+Explain what would be wrong with fitting a single-error OLS model if
+temperature is applied only at whole-plot level.
+
+------------------------------------------------------------------------
+
+### C3. Laboratory: block-balance trade-off
+
+Generate block assignments with 2, 3, and 4 blocks. Compare
+`block_diagnostics` and discuss practical block sizes.
+
+The statistically best balance can still be operationally impossible if
+one block exceeds daily preparation capacity.
+
+------------------------------------------------------------------------
+
+### C4. Laboratory: process-conditioned surfaces
+
+Fit a mixture-process model and generate predictions for the same
+ternary grid at two temperatures. Explain why two different ternary
+surfaces are required when mixture-temperature interactions exist.
+
+------------------------------------------------------------------------
+
+## Appendix D. Structured-experiment troubleshooting matrix
+
+| Symptom | Likely issue | Response |
+|:---|:---|:---|
+| crossed design too large | many process combinations | fractionate with protected model |
+| fraction loses estimability | fraction too small/model too rich | increase fraction or simplify model |
+| block diagnostic poor | incompatible block count/design | change block count or starting design |
+| hard-to-change factor switches too often | split-plot structure not imposed | define `hard_to_change` before randomization |
+| mixed fit singular | weak whole-plot replication | inspect design hierarchy and variance information |
+| one process surface contradicts another | mixture-process interaction | report process-conditioned results |
+| process variable accidentally sums with mixture | coding error | keep process columns outside `mix_spec` components |
+| run order impossible | algorithm ignored operational sequence | revise design before data collection |
+
+------------------------------------------------------------------------
+
+## Appendix E. Guided structured-design exercises
+
+#### Exercise 1. Full cross size
+
+Calculate run counts for mixture designs of 7, 10, and 15 points crossed
+with 2×3, 3×3, and 3×3×2 process grids.
+
+#### Exercise 2. Fractionation threshold
+
+For a chosen model basis, reduce the design to 75%, 50%, and 35%.
+Identify when rank or conditioning becomes unacceptable.
+
+#### Exercise 3. Process order
+
+Compare `process_order = 1` and `2`. Explain which additional polynomial
+process terms appear and how the required design changes.
+
+#### Exercise 4. Mixture-process interaction
+
+Fit with `mixture_process = FALSE` and `TRUE`. Compare interpretation at
+two process settings.
+
+#### Exercise 5. Mixture amount
+
+Design an experiment in which formulation proportions vary together with
+total application dose. Explain why amount is not another mixture
+component.
+
+#### Exercise 6. Blocking
+
+Assign a design to three greenhouse benches. Describe when bench should
+be fixed versus random in the subsequent analysis.
+
+#### Exercise 7. Latin process layout
+
+Construct a temperature × time Latin-style arrangement and explain what
+balance it provides.
+
+#### Exercise 8. Hard-to-change factor
+
+Choose an agricultural process factor that is genuinely hard to change
+and justify whole-plot randomization.
+
+#### Exercise 9. Pseudoreplication
+
+Explain why multiple subplots within one whole plot do not provide
+independent replication for the hard-to-change factor.
+
+#### Exercise 10. Missing run
+
+Remove one subplot from a split-plot design. Discuss how imbalance
+affects the classical versus mixed-model analysis.
+
+#### Exercise 11. Process slice figure
+
+Specify two process settings and describe the figure captions needed to
+make the ternary surfaces comparable.
+
+#### Exercise 12. Reviewer exercise
+
+A paper reports “mixture and temperature effects were analyzed” but
+never states randomization. Draft the questions needed to determine
+whether a split-plot model was required.
+
+------------------------------------------------------------------------
+
+## Appendix F. Reviewer-style structured-design audit
+
+Verify that the study reports:
+
+1.  base mixture design;
+2.  process factors and levels;
+3.  complete versus fractionated cross;
+4.  fractionation model and seed;
+5.  blocks and their physical meaning;
+6.  hard-to-change factors;
+7.  whole-plot and subplot units;
+8.  randomization sequence;
+9.  model basis for mixture and process terms;
+10. mixture-process interactions;
+11. random-effect structure;
+12. process settings used for interpretation.
+
+------------------------------------------------------------------------
+
+## Appendix G. Interpretation language templates
+
+#### Mixture-process interaction
+
+> The effect of composition depended on processing temperature;
+> therefore mixture response surfaces were interpreted at fixed
+> temperature settings rather than collapsed into a single ternary
+> surface.
+
+#### Fractionated design
+
+> The complete mixture-process candidate set was reduced to the stated
+> fraction using a D-information criterion that protected the declared
+> quadratic mixture and second-order process basis.
+
+#### Blocking
+
+> Runs were allocated to blocks before response observation. Block
+> quality was assessed numerically from model-column imbalance and the
+> final allocation was retained for the analysis.
+
+#### Split plot
+
+> Temperature was hard to change and therefore applied at the whole-plot
+> level. Mixture/process settings within each whole plot formed
+> subplots, and the analysis included a whole-plot random effect
+> consistent with the restricted randomization.
+
+------------------------------------------------------------------------
+
+## Appendix H. Applied structured-experiment case bank
+
+### H1. Fertilizer granulation temperature
+
+A three-component fertilizer blend is manufactured at two granulation
+temperatures. Composition is a mixture, temperature is a process factor.
+If temperature can be changed every run, a full or fractionated
+mixture-process design may be randomized freely. If the plant requires
+long thermal equilibration, temperature may become hard to change and a
+split-plot design is more realistic. The design should follow operations
+rather than forcing operations to fit an analytically convenient
+randomization.
+
+### H2. Spray formulation and application volume
+
+A pesticide mixture is applied at 20, 30, and 40 L/ha. Mixture ×
+spray-volume interaction is scientifically plausible because droplet
+behavior can change formulation efficacy. Interpretation should
+therefore use response surfaces at fixed spray volumes. Collapsing all
+volumes into one ternary surface could hide an interaction and produce a
+misleading recommendation.
+
+### H3. Greenhouse bench blocks
+
+A substrate mixture experiment spans several benches with known
+environmental gradients. Runs are allocated to benches before responses
+are observed.
+[`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md)
+can reduce model-column imbalance, but the final analysis must still
+represent the bench structure appropriately. A block label in the
+dataset is not enough if the statistical model ignores it.
+
+### H4. Mixture-amount foliar dose
+
+A biostimulant formulation varies in composition and total application
+dose. The amount dimension is not another composition component because
+increasing total dose does not force one mixture fraction to decrease. A
+mixture-amount design explicitly separates these two scales and supports
+questions about whether an optimal composition changes with total dose.
+
+### H5. Fractionated process experiment under budget
+
+A full 3×3 process grid crossed with a mixture design exceeds the
+budget. D-information fractionation protects the intended model basis
+better than arbitrary deletion. The fraction, model terms, seed, and
+final design diagnostics must be reported. If an important interaction
+is not protected by the fractionation basis, the later absence of
+evidence for that interaction is difficult to interpret.
+
+------------------------------------------------------------------------
+
+## Appendix I. Short-answer structured-design review
+
+1.  **What distinguishes a process variable from a mixture component?**
+    It does not participate in the fixed-sum constraint.
+2.  **What creates a split plot?** Restricted randomization due to
+    hard-to-change factors.
+3.  **Why are subplots not replicates for the whole-plot factor?** They
+    share one whole-plot experimental unit.
+4.  **What should fractionation protect?** The model terms needed for
+    the scientific question.
+5.  **What is mixture amount?** Total quantity varying independently of
+    composition proportions.
+6.  **What does blocking solve?** Nuisance heterogeneity/randomization
+    organization, not mixture geometry.
+7.  **What should be inspected after
+    [`mix_block_design()`](https://wep69.github.io/mixRSMflow/reference/mix_block_design.md)?**
+    Numerical block diagnostics.
+8.  **When can one ternary surface be misleading?** When mixture-process
+    interactions make the surface process-dependent.
+9.  **Which function links design hierarchy to analysis?**
+    [`mix_fit_mixed()`](https://wep69.github.io/mixRSMflow/reference/mix_fit_mixed.md)
+    when random effects are appropriate.
+10. **What must a reproducible process experiment report?** Process
+    levels, randomization, fractionation, blocks, hard-to-change
+    factors, and model interactions.
+
+------------------------------------------------------------------------
+
+## Appendix J. Deeper conceptual notes on randomization and process structure
+
+### J1. The experimental unit determines the error information
+
+A process factor applied to a chamber, batch, or whole plot has fewer
+independent experimental units than a factor applied separately to every
+subplot. No amount of statistical sophistication can create replication
+that was not physically randomized. This is why the design must record
+the whole-plot identifier before analysis. The later random effect is a
+representation of real experimental hierarchy, not a mathematical trick.
+
+### J2. Process interactions multiply interpretation burden
+
+With two process variables and three mixture components, a rich combined
+model can contain many interaction terms. The experimental design must
+support those terms, and the scientific report must interpret them
+through slices or contrasts. Adding every possible interaction by
+default can produce a model that is technically estimable but nearly
+impossible to explain. Pre-specify interactions with strong mechanistic
+or operational relevance whenever possible.
+
+### J3. Fractionation changes what can be learned
+
+Fractionation is not simply a smaller version of the complete
+experiment. The retained subset defines which effects remain
+distinguishable. A model-based fraction should be evaluated for rank,
+prediction variance, and aliasing after selection. If a process
+interaction becomes nearly aliased, the later absence of statistical
+significance is weak evidence that the interaction is biologically
+absent.
+
+### J4. Randomization versus convenience
+
+Operational convenience can legitimately motivate restricted
+randomization, but the restriction must be represented in analysis. For
+example, grouping all high-temperature runs together may reduce setup
+cost but creates a whole-plot structure and potential temporal
+confounding. A defensible protocol randomizes whole plots, randomizes
+subplots within whole plots, records execution order, and includes the
+corresponding hierarchical model.
+
+### J5. Reporting process-conditioned conclusions
+
+When mixture-process interactions are present, conclusions should be
+conditional. Instead of “the optimal mixture was A/B/C,” write “at 30
+degrees C and spray volume 30, the fitted response favored region X; at
+40 degrees C the preferred region shifted toward Y.” This prevents
+process conditions from disappearing from the scientific recommendation.

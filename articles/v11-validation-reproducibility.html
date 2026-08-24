@@ -60,8 +60,1638 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-validation-benchmarking-reproducibility-and-scientific-release-gates">mixRSMflow: Validation, Benchmarking, Reproducibility, and
+Scientific Release Gates<a class="anchor" aria-label="anchor" href="#mixrsmflow-validation-benchmarking-reproducibility-and-scientific-release-gates"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 33<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> scientific software validation,
+mathematical invariants, unit/golden/frozen tests, simulation scenarios,
+design benchmarks, stochastic reproducibility, graphics validation,
+optional-backend gates, local R validation, source build/check, CI
+strategy, metadata verification, audit trails, and release
+classification<br><strong>Companion material:</strong>
+<code>21-validation-and-benchmarks.Rmd</code>,
+<code>22-reproducibility.Rmd</code>, <code>VALIDATION.md</code>,
+<code>RELEASE_CHECKLIST.md</code>, <code>inst/METHOD_GATES.md</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. A
+software capability is not labeled validated merely because code exists.
+Static checks, runtime tests, scientific simulations, optional-backend
+checks, and release checks are reported as separate gates.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-scientific-package-validation-must-be-layered">1. Why scientific package validation must be layered<a class="anchor" aria-label="anchor" href="#why-scientific-package-validation-must-be-layered"></a>
+</h3>
+<p>A function can parse correctly and still compute the wrong result. A
+numerical algorithm can return the correct answer for one example and
+fail near a boundary. A package can pass unit tests and still fail to
+install from its built tarball. A method can work in the core engine
+while an optional backend silently changes the estimand.</p>
+<p>For a scientific package, validation therefore needs several distinct
+layers.</p>
+<p>The central rule is:</p>
+<p><strong>Never collapse implementation status, static validation,
+numerical validation, statistical validation, backend validation, and
+release validation into one word such as “tested.”</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>explain the difference between implementation and validation;</li>
+<li>use mathematical invariants to test mixture geometry;</li>
+<li>design golden tests with analytically known results;</li>
+<li>use frozen scenarios for regression testing;</li>
+<li>construct simulation batteries for bias, coverage, prediction, and
+optimum recovery;</li>
+<li>validate stochastic algorithms under fixed seeds and repeated
+seeds;</li>
+<li>benchmark design algorithms on common regions and models;</li>
+<li>distinguish algorithm quality from runtime performance;</li>
+<li>validate vector and raster graphics independently of statistical
+numbers;</li>
+<li>treat optional backends as capability-specific validation
+targets;</li>
+<li>inspect the package capability registry and method gates;</li>
+<li>use audit trails and session information for reproducibility;</li>
+<li>execute local source build, clean installation, frozen battery, and
+<code>R CMD check --as-cran</code>;</li>
+<li>interpret ERROR, WARNING, and NOTE correctly;</li>
+<li>distinguish a source snapshot from a real <code>R CMD build</code>
+tarball;</li>
+<li>define PASS, CONDITIONAL PASS, and FAIL release states;</li>
+<li>organize a permanent validation dossier.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="validation-architecture">3. Validation architecture<a class="anchor" aria-label="anchor" href="#validation-architecture"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Layer</th>
+<th align="left">Question</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Static source audit</td>
+<td align="left">Are exports, arguments, Rd files, and structure
+internally consistent?</td>
+</tr>
+<tr class="even">
+<td align="left">Parse/load</td>
+<td align="left">Does R parse and load the code?</td>
+</tr>
+<tr class="odd">
+<td align="left">Unit tests</td>
+<td align="left">Do individual contracts and edge cases behave
+correctly?</td>
+</tr>
+<tr class="even">
+<td align="left">Mathematical invariants</td>
+<td align="left">Are fixed-sum and constraint identities always
+satisfied?</td>
+</tr>
+<tr class="odd">
+<td align="left">Golden tests</td>
+<td align="left">Does the package reproduce known analytical
+results?</td>
+</tr>
+<tr class="even">
+<td align="left">Frozen numerical battery</td>
+<td align="left">Do canonical scenarios remain stable across code
+changes?</td>
+</tr>
+<tr class="odd">
+<td align="left">Simulation validation</td>
+<td align="left">Does the method have expected statistical
+behavior?</td>
+</tr>
+<tr class="even">
+<td align="left">Cross-backend comparison</td>
+<td align="left">Do equivalent supported backends agree when they
+should?</td>
+</tr>
+<tr class="odd">
+<td align="left">Graphics validation</td>
+<td align="left">Do files render correctly and represent correct numeric
+objects?</td>
+</tr>
+<tr class="even">
+<td align="left">Build/install</td>
+<td align="left">Does the built package work outside the development
+tree?</td>
+</tr>
+<tr class="odd">
+<td align="left">CRAN-style check</td>
+<td align="left">Does the release artifact pass R package checks?</td>
+</tr>
+<tr class="even">
+<td align="left">Optional capability gate</td>
+<td align="left">Has each advertised backend been tested?</td>
+</tr>
+<tr class="odd">
+<td align="left">Metadata/reproducibility</td>
+<td align="left">Can results be traced to versions, seeds, and
+sources?</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--capability-and-method-gates">Part I. Capability and method gates<a class="anchor" aria-label="anchor" href="#part-i--capability-and-method-gates"></a>
+</h2>
+<div class="section level3">
+<h3 id="inspect-the-capability-registry">4. Inspect the capability registry<a class="anchor" aria-label="anchor" href="#inspect-the-capability-registry"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_capabilities.html">mix_capabilities</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Filter:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_capabilities.html">mix_capabilities</a></span><span class="op">(</span>tier <span class="op">=</span> <span class="st">"Tier 1"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_capabilities.html">mix_capabilities</a></span><span class="op">(</span>module <span class="op">=</span> <span class="st">"optimal_design"</span><span class="op">)</span></span></code></pre></div>
+<p>A capability row documents implementation and validation
+classification. It does not override the actual runtime status recorded
+for a specific release environment.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="method-gates">5. Method gates<a class="anchor" aria-label="anchor" href="#method-gates"></a>
+</h3>
+<p>Read:</p>
+<pre class="text"><code><span><span class="va">inst</span><span class="op">/</span><span class="va">METHOD_GATES.md</span></span></code></pre>
+<p>The file exists to prevent the package from overclaiming historical
+formulas or specialized methods that are not fully reproduced and
+validated.</p>
+<p>Examples of an appropriate gate include:</p>
+<ul>
+<li>grouped/categorized design geometry implemented but a particular
+historical coefficient transformation not claimed;</li>
+<li>modern analogue of a historical figure generated from the fitted
+model, not a copied textbook image;</li>
+<li>an approximation or Monte Carlo integration labeled as such rather
+than described as an exact closed-form reproduction.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--mathematical-invariants">Part II. Mathematical invariants<a class="anchor" aria-label="anchor" href="#part-ii--mathematical-invariants"></a>
+</h2>
+<div class="section level3">
+<h3 id="fixed-sum-invariant">6. Fixed-sum invariant<a class="anchor" aria-label="anchor" href="#fixed-sum-invariant"></a>
+</h3>
+<p>Every feasible candidate should satisfy</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">|</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>T</mi><mo stretchy="true" form="postfix">|</mo></mrow><mo>&lt;</mo><mi>ϵ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\left|\sum_i x_i-T\right|&lt;\epsilon.
+</annotation></semantics></math></p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">1e-7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="bound-invariant">7. Bound invariant<a class="anchor" aria-label="anchor" href="#bound-invariant"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">A</span> <span class="op">&gt;=</span> <span class="fl">0.10</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&gt;=</span> <span class="fl">0.05</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">C</span> <span class="op">&gt;=</span> <span class="fl">0.05</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">A</span> <span class="op">&lt;=</span> <span class="fl">0.70</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.80</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">C</span> <span class="op">&lt;=</span> <span class="fl">0.80</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="general-constraint-invariant">8. General-constraint invariant<a class="anchor" aria-label="anchor" href="#general-constraint-invariant"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">A</span> <span class="op">+</span> <span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.75</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>These invariants should also be tested for generated candidate sets,
+augmented designs, and Bayesian-optimization proposals.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--transformation-invariants">Part III. Transformation invariants<a class="anchor" aria-label="anchor" href="#part-iii--transformation-invariants"></a>
+</h2>
+<div class="section level3">
+<h3 id="forwardinverse-transformation">9. Forward/inverse transformation<a class="anchor" aria-label="anchor" href="#forwardinverse-transformation"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">V</span></span>
+<span><span class="va">z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">x2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_inverse_transform.html">mix_inverse_transform</a></span><span class="op">(</span><span class="va">z</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">x2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Expected result: near numerical precision.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="pseudocomponent-reversibility">10. Pseudocomponent reversibility<a class="anchor" aria-label="anchor" href="#pseudocomponent-reversibility"></a>
+</h3>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spL</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.20</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">xL</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.40</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.20</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.40</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">zL</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span><span class="va">xL</span>, <span class="va">spL</span>, <span class="st">"L"</span><span class="op">)</span></span>
+<span><span class="va">xL2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span><span class="va">zL</span>, <span class="va">spL</span>, <span class="st">"L"</span>, inverse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">xL</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">xL2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--golden-tests">Part IV. Golden tests<a class="anchor" aria-label="anchor" href="#part-iv--golden-tests"></a>
+</h2>
+<div class="section level3">
+<h3 id="exact-coefficient-recovery">11. Exact coefficient recovery<a class="anchor" aria-label="anchor" href="#exact-coefficient-recovery"></a>
+</h3>
+<p>The package contains a frozen Scheffé quadratic dataset with known
+coefficients.</p>
+<p>After installation:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
+<span>  <span class="st">"extdata"</span>,</span>
+<span>  <span class="st">"golden_scheffe_quadratic.csv"</span>,</span>
+<span>  package <span class="op">=</span> <span class="st">"mixRSMflow"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
+<span><span class="va">sp0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"y"</span>,</span>
+<span>  <span class="va">d</span>,</span>
+<span>  <span class="va">sp0</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>  C <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  `A:B` <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  `A:C` <span class="op">=</span> <span class="op">-</span><span class="fl">2</span>,</span>
+<span>  `B:C` <span class="op">=</span> <span class="fl">1</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="op">-</span> <span class="va">truth</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The frozen validation threshold in the current source is extremely
+small because the scenario is constructed for exact linear recovery.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="gbm-identity-golden-test">12. GBM identity golden test<a class="anchor" aria-label="anchor" href="#gbm-identity-golden-test"></a>
+</h3>
+<p>For the binary GBM term with</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mi>i</mi></msub><mo>=</mo><msub><mi>g</mi><mi>j</mi></msub><mo>=</mo><mn>2</mn><mo>,</mo><mspace width="1.0em"></mspace><mi>h</mi><mo>=</mo><mn>1</mn><mi>/</mi><mn>2</mn><mo>,</mo><mspace width="1.0em"></mspace><mi>s</mi><mo>=</mo><mn>2</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">
+g_i=g_j=2,\quad h=1/2,\quad s=2,
+</annotation></semantics></math></p>
+<p>verify</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mi>B</mi><mi>M</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><msub><mi>x</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>x</mi><mi>i</mi></msub><msub><mi>x</mi><mi>j</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+GBM(x_i,x_j)=x_ix_j.
+</annotation></semantics></math></p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span>, <span class="fl">0.3</span>, <span class="fl">0.4</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>, <span class="fl">0.4</span>, <span class="fl">0.2</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.3</span>, <span class="fl">0.4</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">term</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_gbm_term.html">mix_gbm_term</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span><span class="op">)</span>,</span>
+<span>  g <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  h <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  s <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  label <span class="op">=</span> <span class="st">"AB"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_basis.html">mix_basis</a></span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">sp0</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"gbm"</span>,</span>
+<span>  gbm_terms <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">term</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Compare the GBM column with <code>x$A * x$B</code>.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--frozen-numerical-battery">Part V. Frozen numerical battery<a class="anchor" aria-label="anchor" href="#part-v--frozen-numerical-battery"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-freeze-scenarios">13. Why freeze scenarios?<a class="anchor" aria-label="anchor" href="#why-freeze-scenarios"></a>
+</h3>
+<p>A frozen battery prevents a future refactor from silently changing
+core numerical behavior.</p>
+<p>The source snapshot includes:</p>
+<pre class="text"><code><span><span class="va">inst</span><span class="op">/</span><span class="va">extdata</span><span class="op">/</span><span class="va">simulation_scenarios.csv</span></span>
+<span><span class="va">inst</span><span class="op">/</span><span class="va">scripts</span><span class="op">/</span><span class="va">run_validation_battery.R</span></span></code></pre>
+<p>The validation script writes machine-readable results.</p>
+<p>Core scenarios include checks such as:</p>
+<ul>
+<li>coefficient recovery;</li>
+<li>maximum constraint violation;</li>
+<li>IMSE decomposition identity;</li>
+<li>GBM/Scheffé identity.</li>
+</ul>
+<p>A scenario is marked PASS only if it is actually executed and meets
+its threshold.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--simulation-validation">Part VI. Simulation validation<a class="anchor" aria-label="anchor" href="#part-vi--simulation-validation"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-unit-tests-are-not-enough">14. Why unit tests are not enough<a class="anchor" aria-label="anchor" href="#why-unit-tests-are-not-enough"></a>
+</h3>
+<p>A function can return the correct object class and still produce
+biased or poorly calibrated inference.</p>
+<p>Simulation studies should evaluate statistical behavior under known
+data-generating mechanisms.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="suggested-simulation-axes">15. Suggested simulation axes<a class="anchor" aria-label="anchor" href="#suggested-simulation-axes"></a>
+</h3>
+<p>Vary:</p>
+<ul>
+<li>number of components: 3, 4, 5+;</li>
+<li>full versus constrained region;</li>
+<li>mild versus severe constraint width;</li>
+<li>number of runs;</li>
+<li>replication level;</li>
+<li>true model degree;</li>
+<li>fitted model degree;</li>
+<li>residual variance;</li>
+<li>heteroscedasticity;</li>
+<li>non-Gaussian response;</li>
+<li>interior optimum;</li>
+<li>boundary optimum;</li>
+<li>flat optimum plateau;</li>
+<li>competing local maxima;</li>
+<li>mixture-process interactions;</li>
+<li>random effects;</li>
+<li>stochastic design algorithms.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="parameter-recovery-metrics">16. Parameter recovery metrics<a class="anchor" aria-label="anchor" href="#parameter-recovery-metrics"></a>
+</h3>
+<p>For coefficient <code>beta_j</code> across simulations:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>B</mi><mi>i</mi><mi>a</mi><mi>s</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>E</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>β</mi><mo accent="true">̂</mo></mover><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><msub><mi>β</mi><mi>j</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+Bias(\hat\beta_j)=E(\hat\beta_j)-\beta_j.
+</annotation></semantics></math></p>
+<p>Evaluate:</p>
+<ul>
+<li>bias;</li>
+<li>RMSE;</li>
+<li>standard-error calibration;</li>
+<li>interval coverage;</li>
+<li>convergence/failure rate.</li>
+</ul>
+<p>Do not select methods only by p-values.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="prediction-metrics">17. Prediction metrics<a class="anchor" aria-label="anchor" href="#prediction-metrics"></a>
+</h3>
+<p>Evaluate:</p>
+<ul>
+<li>RMSE on a common feasible grid;</li>
+<li>maximum absolute error;</li>
+<li>average prediction variance;</li>
+<li>worst-case prediction variance;</li>
+<li>coverage of confidence/prediction intervals;</li>
+<li>boundary error versus interior error.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="optimum-recovery-metrics">18. Optimum-recovery metrics<a class="anchor" aria-label="anchor" href="#optimum-recovery-metrics"></a>
+</h3>
+<p>When the true response surface is known, record:</p>
+<ul>
+<li>Euclidean distance in independent coordinates between estimated and
+true optimum;</li>
+<li>component-wise error;</li>
+<li>response regret;</li>
+<li>probability the true optimum lies in the estimated uncertainty
+region;</li>
+<li>coverage of the near-optimal region;</li>
+<li>frequency of boundary misclassification.</li>
+</ul>
+<p>A method can estimate maximum response accurately while estimating
+the optimum location poorly on a flat surface. Report both.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--design-benchmarks">Part VII. Design benchmarks<a class="anchor" aria-label="anchor" href="#part-vii--design-benchmarks"></a>
+</h2>
+<div class="section level3">
+<h3 id="compare-algorithms-on-the-same-problem">19. Compare algorithms on the same problem<a class="anchor" aria-label="anchor" href="#compare-algorithms-on-the-same-problem"></a>
+</h3>
+<p>For each benchmark:</p>
+<ol style="list-style-type: decimal">
+<li>fix the mixture region;</li>
+<li>fix the model;</li>
+<li>fix the run count;</li>
+<li>fix candidate/evaluation sets;</li>
+<li>run exchange, GA, and hybrid approaches;</li>
+<li>repeat stochastic algorithms across seeds;</li>
+<li>compare objective quality, FDS/VDG, conditioning, runtime, and
+stability.</li>
+</ol>
+<p>Do not compare algorithms using different candidate sets and call the
+difference algorithmic performance.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="separate-statistical-quality-from-speed">20. Separate statistical quality from speed<a class="anchor" aria-label="anchor" href="#separate-statistical-quality-from-speed"></a>
+</h3>
+<p>A faster algorithm can be worse statistically. A slightly better
+design can require dramatically more computation.</p>
+<p>Report at least:</p>
+<ul>
+<li>objective score;</li>
+<li>average prediction variance;</li>
+<li>maximum prediction variance;</li>
+<li>condition number;</li>
+<li>runtime;</li>
+<li>memory where relevant;</li>
+<li>between-seed variability.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--stochastic-reproducibility">Part VIII. Stochastic reproducibility<a class="anchor" aria-label="anchor" href="#part-viii--stochastic-reproducibility"></a>
+</h2>
+<div class="section level3">
+<h3 id="fixed-seeds">21. Fixed seeds<a class="anchor" aria-label="anchor" href="#fixed-seeds"></a>
+</h3>
+<p>All stochastic examples should expose a seed.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">od</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp0</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">33001</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The seed is necessary for reproducibility, but one seed is not enough
+to demonstrate algorithm stability.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="repeated-seeds">22. Repeated seeds<a class="anchor" aria-label="anchor" href="#repeated-seeds"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seeds</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span></span>
+<span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
+<span>  <span class="va">seeds</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>      <span class="va">sp0</span>,</span>
+<span>      <span class="st">"scheffe_quadratic"</span>,</span>
+<span>      runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>      criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>      algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>      seed <span class="op">=</span> <span class="va">s</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Compare objective quality across runs.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--graphics-validation">Part IX. Graphics validation<a class="anchor" aria-label="anchor" href="#part-ix--graphics-validation"></a>
+</h2>
+<div class="section level3">
+<h3 id="numeric-first-graphic-second">23. Numeric first, graphic second<a class="anchor" aria-label="anchor" href="#numeric-first-graphic-second"></a>
+</h3>
+<p>The graphic should be derived from a verified numeric object.</p>
+<p>For a response contour, compare a few plotted grid values with direct
+<code><a href="../reference/mix_predict.html">mix_predict()</a></code> calculations.</p>
+<p>For the 3D vector surface, confirm:</p>
+<ul>
+<li>component orientation;</li>
+<li>response range;</li>
+<li>consistency with the ternary contour;</li>
+<li>no points outside the feasible region.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="file-integrity-checks">24. File-integrity checks<a class="anchor" aria-label="anchor" href="#file-integrity-checks"></a>
+</h3>
+<p>For each export format:</p>
+<ul>
+<li>confirm file exists;</li>
+<li>confirm nonzero file size;</li>
+<li>open/render it;</li>
+<li>inspect clipping;</li>
+<li>inspect fonts/labels;</li>
+<li>verify declared dpi for raster output;</li>
+<li>verify vector geometry for PDF/SVG when required.</li>
+</ul>
+<p>Visual regression packages such as <code>vdiffr</code> can supplement
+but not replace manual scientific inspection.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--optional-backend-validation">Part X. Optional-backend validation<a class="anchor" aria-label="anchor" href="#part-x--optional-backend-validation"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-optional-packages-need-separate-gates">25. Why optional packages need separate gates<a class="anchor" aria-label="anchor" href="#why-optional-packages-need-separate-gates"></a>
+</h3>
+<p>Core R code can work while:</p>
+<ul>
+<li>
+<code>nlme</code> adapter fails on a covariance structure;</li>
+<li>
+<code>lme4</code> formula translation changes;</li>
+<li>
+<code>brms</code> API changes;</li>
+<li>
+<code>DiceKriging</code> optimizer changes;</li>
+<li>
+<code>plotly</code> rendering changes;</li>
+<li>
+<code>shiny</code> interface breaks.</li>
+</ul>
+<p>Each advertised optional capability should have at least one runtime
+test in an environment where the dependency is installed.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="suggested-backend-matrix">26. Suggested backend matrix<a class="anchor" aria-label="anchor" href="#suggested-backend-matrix"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Backend</th>
+<th align="left">Capability</th>
+<th align="left">Minimum validation</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>nlme</code></td>
+<td align="left">GLS</td>
+<td align="left">fit + prediction + covariance example</td>
+</tr>
+<tr class="even">
+<td align="left"><code>lme4</code></td>
+<td align="left">mixed model</td>
+<td align="left">fit + random structure + prediction</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>brms</code></td>
+<td align="left">Bayesian fit</td>
+<td align="left">smoke fit + convergence + posterior extraction</td>
+</tr>
+<tr class="even">
+<td align="left"><code>DiceKriging</code></td>
+<td align="left">Bayesian optimization</td>
+<td align="left">proposal feasibility + deterministic seed check</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>plotly</code></td>
+<td align="left">interactive graphics</td>
+<td align="left">object creation + manual interaction</td>
+</tr>
+<tr class="even">
+<td align="left"><code>shiny</code></td>
+<td align="left">app</td>
+<td align="left">launch + core workflow consistency</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--local-r-validation-pipeline">Part XI. Local R validation pipeline<a class="anchor" aria-label="anchor" href="#part-xi--local-r-validation-pipeline"></a>
+</h2>
+<div class="section level3">
+<h3 id="main-windows-entry-point">27. Main Windows entry point<a class="anchor" aria-label="anchor" href="#main-windows-entry-point"></a>
+</h3>
+<p>The source package includes:</p>
+<pre class="text"><code><span><span class="va">VALIDATE_WINDOWS.ps1</span></span></code></pre>
+<p>which calls:</p>
+<pre class="text"><code><span><span class="va">inst</span><span class="op">/</span><span class="va">scripts</span><span class="op">/</span><span class="va">validate_local.R</span></span></code></pre>
+<p>The validation sequence includes:</p>
+<ol style="list-style-type: decimal">
+<li>
+<code>roxygen2</code> documentation;</li>
+<li>
+<code>testthat</code>;</li>
+<li>vignette building;</li>
+<li>R package build;</li>
+<li>installation into a temporary library;</li>
+<li>frozen numerical validation;</li>
+<li>
+<code>R CMD check --as-cran</code>.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="unix-entry-point">28. Unix entry point<a class="anchor" aria-label="anchor" href="#unix-entry-point"></a>
+</h3>
+<pre class="text"><code><span><span class="va">VALIDATE_UNIX.sh</span></span></code></pre>
+<p>The same scientific gates should be preserved across platforms.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--source-snapshot-versus-r-built-tarball">Part XII. Source snapshot versus R-built tarball<a class="anchor" aria-label="anchor" href="#part-xii--source-snapshot-versus-r-built-tarball"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-the-distinction-matters">29. Why the distinction matters<a class="anchor" aria-label="anchor" href="#why-the-distinction-matters"></a>
+</h3>
+<p>A manually archived source tree is useful for transfer and
+inspection.</p>
+<p>A true release artifact must be produced by:</p>
+<pre class="text"><code>R CMD build</code></pre>
+<p>The build process can expose problems that are invisible in the
+development tree:</p>
+<ul>
+<li>ignored files;</li>
+<li>incorrect paths;</li>
+<li>vignette build failures;</li>
+<li>missing installed resources;</li>
+<li>documentation issues.</li>
+</ul>
+<p>Therefore do not call the source snapshot a CRAN-ready tarball.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--clean-installation">Part XIII. Clean installation<a class="anchor" aria-label="anchor" href="#part-xiii--clean-installation"></a>
+</h2>
+<div class="section level3">
+<h3 id="install-the-built-tarball-into-a-temporary-library">30. Install the built tarball into a temporary library<a class="anchor" aria-label="anchor" href="#install-the-built-tarball-into-a-temporary-library"></a>
+</h3>
+<p>A package that works only under <code>devtools::load_all()</code> is
+not sufficiently validated.</p>
+<p>The clean-install gate confirms:</p>
+<ul>
+<li>namespace behavior after installation;</li>
+<li>
+<code><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file()</a></code> resources;</li>
+<li>included data/scripts;</li>
+<li>dependency declarations;</li>
+<li>examples from the installed package.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiv--r-cmd-check">Part XIV. R CMD check<a class="anchor" aria-label="anchor" href="#part-xiv--r-cmd-check"></a>
+</h2>
+<div class="section level3">
+<h3 id="error">31. ERROR<a class="anchor" aria-label="anchor" href="#error"></a>
+</h3>
+<p>Any ERROR blocks release.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="warning">32. WARNING<a class="anchor" aria-label="anchor" href="#warning"></a>
+</h3>
+<p>Any WARNING should also block release until investigated and resolved
+or formally justified under the target repository’s policies.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="note">33. NOTE<a class="anchor" aria-label="anchor" href="#note"></a>
+</h3>
+<p>Every NOTE must be read. Do not automatically ignore NOTES because
+they are not warnings.</p>
+<p>Classify each as:</p>
+<ul>
+<li>resolved;</li>
+<li>acceptable and documented;</li>
+<li>blocker.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xv--validation-status-language">Part XV. Validation status language<a class="anchor" aria-label="anchor" href="#part-xv--validation-status-language"></a>
+</h2>
+<div class="section level3">
+<h3 id="fail">34. FAIL<a class="anchor" aria-label="anchor" href="#fail"></a>
+</h3>
+<p>Use FAIL when any required gate fails, including:</p>
+<ul>
+<li>test failure;</li>
+<li>numerical battery failure;</li>
+<li>install failure;</li>
+<li>ERROR/WARNING;</li>
+<li>invalid constraints;</li>
+<li>corrupted figure;</li>
+<li>required backend failure.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="conditional-pass">35. CONDITIONAL PASS<a class="anchor" aria-label="anchor" href="#conditional-pass"></a>
+</h3>
+<p>Use when core required gates pass but a non-core release condition
+remains, such as:</p>
+<ul>
+<li>optional backend intentionally excluded from the advertised release
+scope;</li>
+<li>NOTE awaiting documented resolution;</li>
+<li>editorial metadata task remaining.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="pass">36. PASS<a class="anchor" aria-label="anchor" href="#pass"></a>
+</h3>
+<p>Reserve PASS for an explicitly defined scope with completed
+evidence.</p>
+<p>Example:</p>
+<pre class="text"><code>Static audit:            PASS
+R parse/load:            PASS
+Unit tests:              PASS
+Frozen battery:          PASS
+Vignettes:               PASS
+Built-tarball install:   PASS
+R CMD check:             0 ERROR / 0 WARNING
+Declared backends:       PASS
+Metadata:                VERIFIED
+Method gates:            SATISFIED</code></pre>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xvi--metadata-verification">Part XVI. Metadata verification<a class="anchor" aria-label="anchor" href="#part-xvi--metadata-verification"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-references">37. Scientific references<a class="anchor" aria-label="anchor" href="#scientific-references"></a>
+</h3>
+<p>The package contains metadata/reference files under
+<code>inst/metadata/</code> and <code>references/</code>.</p>
+<p>Before release:</p>
+<ul>
+<li>verify DOI;</li>
+<li>verify author names;</li>
+<li>verify year;</li>
+<li>verify package/software versions mentioned in the state-of-the-art
+vignette;</li>
+<li>update the search date;</li>
+<li>preserve two-source verification records where the project protocol
+requires them.</li>
+</ul>
+<p>Do not invent missing bibliographic metadata.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xvii--reproducibility-and-audit-trail">Part XVII. Reproducibility and audit trail<a class="anchor" aria-label="anchor" href="#part-xvii--reproducibility-and-audit-trail"></a>
+</h2>
+<div class="section level3">
+<h3 id="object-level-audit">38. Object-level audit<a class="anchor" aria-label="anchor" href="#object-level-audit"></a>
+</h3>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span><span class="va">sp</span>, <span class="st">"simplex_lattice"</span>, degree <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">33001</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_audit_trail.html">mix_audit_trail</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="report-level-session-information">39. Report-level session information<a class="anchor" aria-label="anchor" href="#report-level-session-information"></a>
+</h3>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_report.html">mix_report</a></span><span class="op">(</span></span>
+<span>  <span class="va">d</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"design_report.md"</span>,</span>
+<span>  include_session <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Archive:</p>
+<ul>
+<li>R version;</li>
+<li>OS;</li>
+<li>
+<code>mixRSMflow</code> version;</li>
+<li>optional backend versions;</li>
+<li>seeds;</li>
+<li>source data hash/version;</li>
+<li>analysis script;</li>
+<li>validation log.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xviii--validation-dossier">Part XVIII. Validation dossier<a class="anchor" aria-label="anchor" href="#part-xviii--validation-dossier"></a>
+</h2>
+<div class="section level3">
+<h3 id="recommended-directory">40. Recommended directory<a class="anchor" aria-label="anchor" href="#recommended-directory"></a>
+</h3>
+<pre class="text"><code>validation/
+├── environment/
+├── static_audits/
+├── unit_tests/
+├── golden_tests/
+├── simulation_battery/
+├── design_benchmarks/
+├── backend_tests/
+├── graphics/
+├── R_CMD_check/
+├── metadata/
+└── release/</code></pre>
+<p>Every release candidate should be traceable to a frozen validation
+dossier.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xix--complete-release-gate-workflow">Part XIX. Complete release-gate workflow<a class="anchor" aria-label="anchor" href="#part-xix--complete-release-gate-workflow"></a>
+</h2>
+<div class="section level3">
+<h3 id="stage-1-source-integrity">41. Stage 1: source integrity<a class="anchor" aria-label="anchor" href="#stage-1-source-integrity"></a>
+</h3>
+<p>Verify checksums and repository status.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-2-static-api-consistency">42. Stage 2: static API consistency<a class="anchor" aria-label="anchor" href="#stage-2-static-api-consistency"></a>
+</h3>
+<p>Run the supplied static audits.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-3-r-parse-and-load">43. Stage 3: R parse and load<a class="anchor" aria-label="anchor" href="#stage-3-r-parse-and-load"></a>
+</h3>
+<p>Run every R file through the R parser and
+<code>devtools::load_all()</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-4-documentation">44. Stage 4: documentation<a class="anchor" aria-label="anchor" href="#stage-4-documentation"></a>
+</h3>
+<p>Regenerate roxygen documentation and inspect changes.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-5-unit-tests">45. Stage 5: unit tests<a class="anchor" aria-label="anchor" href="#stage-5-unit-tests"></a>
+</h3>
+<p>All required <code>testthat</code> files pass.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-6-vignette-rendering">46. Stage 6: vignette rendering<a class="anchor" aria-label="anchor" href="#stage-6-vignette-rendering"></a>
+</h3>
+<p>Every quick vignette and extended vignette intended for build renders
+or is included according to the chosen documentation strategy.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-7-real-r-build">47. Stage 7: real R build<a class="anchor" aria-label="anchor" href="#stage-7-real-r-build"></a>
+</h3>
+<p>Create the tarball.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-8-clean-install">48. Stage 8: clean install<a class="anchor" aria-label="anchor" href="#stage-8-clean-install"></a>
+</h3>
+<p>Install the tarball into a clean temporary library.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-9-numerical-validation">49. Stage 9: numerical validation<a class="anchor" aria-label="anchor" href="#stage-9-numerical-validation"></a>
+</h3>
+<p>Run the frozen battery from the installed package.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-10-cran-style-check">50. Stage 10: CRAN-style check<a class="anchor" aria-label="anchor" href="#stage-10-cran-style-check"></a>
+</h3>
+<p>Run <code>R CMD check --as-cran</code> or <code>rcmdcheck</code>
+equivalent.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-11-optional-capabilities">51. Stage 11: optional capabilities<a class="anchor" aria-label="anchor" href="#stage-11-optional-capabilities"></a>
+</h3>
+<p>Test every backend that will be advertised as working.</p>
+</div>
+<div class="section level3">
+<h3 id="stage-12-scientific-review">52. Stage 12: scientific review<a class="anchor" aria-label="anchor" href="#stage-12-scientific-review"></a>
+</h3>
+<p>Review method gates, references, figures, simulations, and
+conclusions.</p>
+<p>Only then classify the release.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xx--common-mistakes">Part XX. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xx--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="calling-code-validated-because-it-was-written">53. Calling code “validated” because it was written<a class="anchor" aria-label="anchor" href="#calling-code-validated-because-it-was-written"></a>
+</h3>
+<p>Implementation is not validation.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="increasing-tolerances-until-tests-pass">54. Increasing tolerances until tests pass<a class="anchor" aria-label="anchor" href="#increasing-tolerances-until-tests-pass"></a>
+</h3>
+<p>A tolerance change requires numerical justification.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="testing-only-on-the-development-machine">55. Testing only on the development machine<a class="anchor" aria-label="anchor" href="#testing-only-on-the-development-machine"></a>
+</h3>
+<p>Use clean installation and CI/multiple platforms when possible.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="benchmarking-algorithms-on-different-candidate-sets">56. Benchmarking algorithms on different candidate sets<a class="anchor" aria-label="anchor" href="#benchmarking-algorithms-on-different-candidate-sets"></a>
+</h3>
+<p>Hold the scientific problem fixed.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="validating-only-mean-coefficients">57. Validating only mean coefficients<a class="anchor" aria-label="anchor" href="#validating-only-mean-coefficients"></a>
+</h3>
+<p>Also test geometry, prediction, optimum location, constraints, and
+failure modes.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ignoring-optional-backends">58. Ignoring optional backends<a class="anchor" aria-label="anchor" href="#ignoring-optional-backends"></a>
+</h3>
+<p>Do not advertise an untested optional pathway as validated.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-a-generated-plot-as-correct-because-it-opens">59. Treating a generated plot as correct because it opens<a class="anchor" aria-label="anchor" href="#treating-a-generated-plot-as-correct-because-it-opens"></a>
+</h3>
+<p>Verify the numerical content and geometry.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="reusing-an-old-pass-after-changing-the-source">60. Reusing an old PASS after changing the source<a class="anchor" aria-label="anchor" href="#reusing-an-old-pass-after-changing-the-source"></a>
+</h3>
+<p>Any material code/documentation change requires the relevant gates to
+be rerun.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xxi--function-selection-guide">Part XXI. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xxi--function-selection-guide"></a>
+</h2>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Validation question</th>
+<th align="left">Tool</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">What capabilities are registered?</td>
+<td align="left"><code><a href="../reference/mix_capabilities.html">mix_capabilities()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">What did this object record?</td>
+<td align="left"><code><a href="../reference/mix_audit_trail.html">mix_audit_trail()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Can I produce an auditable report?</td>
+<td align="left"><code><a href="../reference/mix_report.html">mix_report()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Geometry invariant</td>
+<td align="left">
+<code><a href="../reference/mix_spec.html">mix_spec()</a></code>, <code><a href="../reference/mix_vertices.html">mix_vertices()</a></code>,
+explicit checks</td>
+</tr>
+<tr class="odd">
+<td align="left">Known coefficient recovery</td>
+<td align="left">frozen golden data + <code><a href="../reference/mix_fit.html">mix_fit()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">GBM identity</td>
+<td align="left">
+<code><a href="../reference/mix_gbm_term.html">mix_gbm_term()</a></code> +
+<code><a href="../reference/mix_basis.html">mix_basis()</a></code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Design benchmark</td>
+<td align="left">
+<code><a href="../reference/mix_optimal_design.html">mix_optimal_design()</a></code>,
+<code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Optimum recovery simulation</td>
+<td align="left">
+<code><a href="../reference/mix_optimize.html">mix_optimize()</a></code>,
+<code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Full local gate</td>
+<td align="left"><code>inst/scripts/validate_local.R</code></td>
+</tr>
+<tr class="even">
+<td align="left">Frozen battery</td>
+<td align="left"><code>inst/scripts/run_validation_battery.R</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Windows entry point</td>
+<td align="left"><code>VALIDATE_WINDOWS.ps1</code></td>
+</tr>
+<tr class="even">
+<td align="left">Unix entry point</td>
+<td align="left"><code>VALIDATE_UNIX.sh</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xxii--reporting-checklist-for-a-validation-statement">Part XXII. Reporting checklist for a validation statement<a class="anchor" aria-label="anchor" href="#part-xxii--reporting-checklist-for-a-validation-statement"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">package
+version/commit/hash;</label></li>
+<li><label><input type="checkbox">operating system;</label></li>
+<li><label><input type="checkbox">R version;</label></li>
+<li><label><input type="checkbox">library/dependency
+versions;</label></li>
+<li><label><input type="checkbox">static-audit results;</label></li>
+<li><label><input type="checkbox">parse/load result;</label></li>
+<li><label><input type="checkbox">testthat summary;</label></li>
+<li><label><input type="checkbox">golden-test summary;</label></li>
+<li><label><input type="checkbox">frozen-battery file;</label></li>
+<li><label><input type="checkbox">simulation scenarios and
+seeds;</label></li>
+<li><label><input type="checkbox">design-benchmark
+definitions;</label></li>
+<li><label><input type="checkbox">stochastic repeated-seed
+results;</label></li>
+<li><label><input type="checkbox">optional backend
+matrix;</label></li>
+<li><label><input type="checkbox">graphics inspection
+record;</label></li>
+<li><label><input type="checkbox">built tarball
+filename/hash;</label></li>
+<li><label><input type="checkbox">clean-install log;</label></li>
+<li><label><input type="checkbox"><code>00check.log</code>;</label></li>
+<li><label><input type="checkbox">ERROR count;</label></li>
+<li><label><input type="checkbox">WARNING count;</label></li>
+<li><label><input type="checkbox">NOTE disposition;</label></li>
+<li><label><input type="checkbox">method-gate review;</label></li>
+<li><label><input type="checkbox">metadata verification
+date;</label></li>
+<li><label><input type="checkbox">final PASS/CONDITIONAL PASS/FAIL
+classification and scope.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--compact-installed-package-validation-script">Appendix A. Compact installed-package validation script<a class="anchor" aria-label="anchor" href="#appendix-a--compact-installed-package-validation-script"></a>
+</h2>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">1e-7</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">A</span> <span class="op">+</span> <span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.75</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">V</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">V2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_inverse_transform.html">mix_inverse_transform</a></span><span class="op">(</span><span class="va">z</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">V2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;=</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">caps</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_capabilities.html">mix_capabilities</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">caps</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns <strong>evidence that the software and its
+declared capabilities work as specified</strong>. It does not re-teach
+scientific mixture geometry (24), design theory (25), blending models
+(26), structured experiments (27), multiresponse decisions (28), optimum
+uncertainty (29), sequential science (30), response engines (31), or
+figure construction (32), except when those topics appear as validation
+targets.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>Scientific software quality is not one gate.</p>
+<p>A trustworthy release needs a chain of evidence:</p>
+<p><strong>source integrity -&gt; mathematical invariants -&gt;
+unit/golden tests -&gt; statistical simulation -&gt; algorithm
+benchmarks -&gt; optional-backend checks -&gt; graphics inspection -&gt;
+R build -&gt; clean install -&gt; R CMD check -&gt; metadata and
+method-gate review -&gt; archived validation dossier.</strong></p>
+<p>The package should state exactly which links in that chain have been
+completed for each release.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-validation-laboratories">Appendix C. Advanced validation laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-validation-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-design-a-new-golden-test">C1. Laboratory: design a new golden test<a class="anchor" aria-label="anchor" href="#c1--laboratory-design-a-new-golden-test"></a>
+</h3>
+<p>Choose one analytically known identity not already in the frozen
+battery. Examples:</p>
+<ul>
+<li>lower-bound pseudocomponent round trip;</li>
+<li>exact full-simplex moment;</li>
+<li>slack reparameterization fitted-value equivalence.</li>
+</ul>
+<p>Write:</p>
+<ol style="list-style-type: decimal">
+<li>data-generation code;</li>
+<li>exact expected result;</li>
+<li>tolerance rationale;</li>
+<li>test code;</li>
+<li>failure message.</li>
+</ol>
+<div class="section level4">
+<h4 id="lesson">Lesson<a class="anchor" aria-label="anchor" href="#lesson"></a>
+</h4>
+<p>A golden test should have a known answer independent of the
+implementation being tested. Otherwise the package can validate itself
+against its own mistake.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-repeated-seed-benchmark">C2. Laboratory: repeated-seed benchmark<a class="anchor" aria-label="anchor" href="#c2--laboratory-repeated-seed-benchmark"></a>
+</h3>
+<p>Benchmark exchange, GA, and hybrid I-designs across 30 seeds on one
+constrained region.</p>
+<p>Record:</p>
+<ul>
+<li>objective score;</li>
+<li>condition number;</li>
+<li>maximum prediction variance;</li>
+<li>runtime;</li>
+<li>failure count.</li>
+</ul>
+<p>Plot objective quality versus runtime.</p>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>The best algorithm depends on the trade-off between statistical
+design quality, computational cost, and stability.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-optimum-coverage-simulation">C3. Laboratory: optimum coverage simulation<a class="anchor" aria-label="anchor" href="#c3--laboratory-optimum-coverage-simulation"></a>
+</h3>
+<p>Define a known quadratic surface with an interior optimum. Simulate
+500 datasets, fit the model, compute <code><a href="../reference/mix_optimum_ci.html">mix_optimum_ci()</a></code>, and
+estimate the proportion of joint regions that contain the true
+optimum.</p>
+<p>This is a direct statistical validation target for the
+optimum-uncertainty module.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-release-regression-after-code-change">C4. Laboratory: release regression after code change<a class="anchor" aria-label="anchor" href="#c4--laboratory-release-regression-after-code-change"></a>
+</h3>
+<p>Modify one internal helper in a controlled branch. Rerun:</p>
+<ul>
+<li>static audits;</li>
+<li>unit tests;</li>
+<li>golden tests;</li>
+<li>frozen battery;</li>
+<li>vignette build;</li>
+<li>package build/install;</li>
+<li>
+<code>R CMD check</code>.</li>
+</ul>
+<p>Record exactly which gates detect the change. This exercise
+demonstrates why no single gate is sufficient.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--validation-troubleshooting-matrix">Appendix D. Validation troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--validation-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Meaning</th>
+<th align="left">Correct response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">static audit passes, R parse fails</td>
+<td align="left">static checker cannot replace R</td>
+<td align="left">fix source and rerun all relevant gates</td>
+</tr>
+<tr class="even">
+<td align="left">unit tests pass, golden test fails</td>
+<td align="left">contract works but numeric result changed</td>
+<td align="left">investigate algorithm/regression</td>
+</tr>
+<tr class="odd">
+<td align="left">frozen result differs slightly across platforms</td>
+<td align="left">numerical tolerance/platform issue</td>
+<td align="left">quantify and justify tolerance, do not widen
+blindly</td>
+</tr>
+<tr class="even">
+<td align="left">GA benchmark highly variable</td>
+<td align="left">search instability</td>
+<td align="left">improve settings or report instability</td>
+</tr>
+<tr class="odd">
+<td align="left">clean install fails, <code>load_all</code> works</td>
+<td align="left">packaging/resource declaration issue</td>
+<td align="left">debug built artifact</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>R CMD check</code> warning appears</td>
+<td align="left">release blocker</td>
+<td align="left">resolve before release</td>
+</tr>
+<tr class="odd">
+<td align="left">optional backend absent</td>
+<td align="left">capability not tested</td>
+<td align="left">mark unavailable/unvalidated; do not substitute
+silently</td>
+</tr>
+<tr class="even">
+<td align="left">figure opens but values wrong</td>
+<td align="left">visual code bug</td>
+<td align="left">validate against numeric predictions</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-validation-exercises">Appendix E. Guided validation exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-validation-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--invariant-design">Exercise 1. Invariant design<a class="anchor" aria-label="anchor" href="#exercise-1--invariant-design"></a>
+</h4>
+<p>Write three invariant tests for every candidate-generation function:
+total, bounds, and linear restrictions.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--tolerance-rationale">Exercise 2. Tolerance rationale<a class="anchor" aria-label="anchor" href="#exercise-2--tolerance-rationale"></a>
+</h4>
+<p>For a transformation round trip, compare <code>1e-6</code>,
+<code>1e-8</code>, and <code>1e-12</code> tolerances. Explain which is
+justified by floating-point operations.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--golden-independence">Exercise 3. Golden independence<a class="anchor" aria-label="anchor" href="#exercise-3--golden-independence"></a>
+</h4>
+<p>Explain why using <code><a href="../reference/mix_fit.html">mix_fit()</a></code> to generate both the
+expected and observed coefficient vector is not a valid golden test.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--simulation-power">Exercise 4. Simulation power<a class="anchor" aria-label="anchor" href="#exercise-4--simulation-power"></a>
+</h4>
+<p>Estimate how many Monte Carlo repetitions are needed to estimate 95%
+coverage to a useful precision.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--algorithm-benchmark-fairness">Exercise 5. Algorithm benchmark fairness<a class="anchor" aria-label="anchor" href="#exercise-5--algorithm-benchmark-fairness"></a>
+</h4>
+<p>List every element that must be held constant when comparing GA and
+exchange designs.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--backend-matrix">Exercise 6. Backend matrix<a class="anchor" aria-label="anchor" href="#exercise-6--backend-matrix"></a>
+</h4>
+<p>Create a table of installed/missing versions for <code>nlme</code>,
+<code>lme4</code>, <code>brms</code>, <code>DiceKriging</code>,
+<code>plotly</code>, and <code>shiny</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--clean-library">Exercise 7. Clean library<a class="anchor" aria-label="anchor" href="#exercise-7--clean-library"></a>
+</h4>
+<p>Explain why a package may accidentally use an undeclared dependency
+from the developer’s ordinary library.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--source-snapshot">Exercise 8. Source snapshot<a class="anchor" aria-label="anchor" href="#exercise-8--source-snapshot"></a>
+</h4>
+<p>Explain why a zipped source tree is not the same artifact as
+<code>R CMD build</code> output.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--note-review">Exercise 9. NOTE review<a class="anchor" aria-label="anchor" href="#exercise-9--note-review"></a>
+</h4>
+<p>Classify three hypothetical R CMD check NOTES as harmless, fixable,
+or blocking and justify each.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--graphics">Exercise 10. Graphics<a class="anchor" aria-label="anchor" href="#exercise-10--graphics"></a>
+</h4>
+<p>Create an automated file-existence/hash check plus a manual
+visual-inspection checklist.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--metadata">Exercise 11. Metadata<a class="anchor" aria-label="anchor" href="#exercise-11--metadata"></a>
+</h4>
+<p>Choose five key scientific references and document how DOI, title,
+authors, and year would be verified from two sources.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A package paper states “all functions were validated” without
+simulation, platform, or backend details. Draft a reviewer request for a
+validation matrix.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-software-validation-audit">Appendix F. Reviewer-style software-validation audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-software-validation-audit"></a>
+</h2>
+<p>A package manuscript should state:</p>
+<ol style="list-style-type: decimal">
+<li>source version/commit;</li>
+<li>R versions/platforms;</li>
+<li>unit-test coverage or scope;</li>
+<li>golden identities;</li>
+<li>simulation scenarios;</li>
+<li>performance metrics;</li>
+<li>stochastic seeds/repetitions;</li>
+<li>design-benchmark fairness;</li>
+<li>optional backend versions;</li>
+<li>graphics validation;</li>
+<li>build/install checks;</li>
+<li>R CMD check results;</li>
+<li>known method gates/limitations;</li>
+<li>metadata verification procedure;</li>
+<li>archived reproducibility materials.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--validation-statement-templates">Appendix G. Validation statement templates<a class="anchor" aria-label="anchor" href="#appendix-g--validation-statement-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="static-only-state">Static-only state<a class="anchor" aria-label="anchor" href="#static-only-state"></a>
+</h4>
+<blockquote>
+<p>The source tree passed the documented static structure/API/Rd audits.
+R runtime, numerical, vignette, installation, and
+<code>R CMD check</code> gates had not yet been executed in that
+environment and are therefore reported separately rather than inferred
+from the static result.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="runtime-core-pass">Runtime core PASS<a class="anchor" aria-label="anchor" href="#runtime-core-pass"></a>
+</h4>
+<blockquote>
+<p>The declared core capability set passed R parse/load, unit tests,
+golden identities, the frozen numerical battery, vignette rendering,
+built-tarball installation, and <code>R CMD check</code> with no ERROR
+or WARNING. Optional backends are reported independently.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="conditional-pass-1">Conditional PASS<a class="anchor" aria-label="anchor" href="#conditional-pass-1"></a>
+</h4>
+<blockquote>
+<p>Core release gates passed, but the stated optional capability was not
+included in the validated release scope because its external backend was
+unavailable in the test environment. The package therefore reports the
+capability as optional rather than silently substituting another
+method.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="failed-gate">Failed gate<a class="anchor" aria-label="anchor" href="#failed-gate"></a>
+</h4>
+<blockquote>
+<p>The release candidate is not classified as validated because the
+specified numerical/runtime gate failed. The failure is retained in the
+validation record pending correction and rerun.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-validation-case-bank">Appendix H. Applied validation case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-validation-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--constraint-regression-bug">H1. Constraint regression bug<a class="anchor" aria-label="anchor" href="#h1--constraint-regression-bug"></a>
+</h3>
+<p>A future refactor accidentally allows candidate points that exceed an
+upper bound by 0.01. Plotting may still look normal. A fixed-sum test
+alone will not catch the error, but bound and general-constraint
+invariants will. This illustrates why geometry validation needs several
+simultaneous invariants.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--algorithm-quality-regression">H2. Algorithm-quality regression<a class="anchor" aria-label="anchor" href="#h2--algorithm-quality-regression"></a>
+</h3>
+<p>A faster GA implementation reduces runtime by 40% but produces
+designs with consistently worse I-criterion and FDS behavior. The change
+should not be accepted as an unqualified improvement. Scientific package
+benchmarks must report both computational and statistical
+performance.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--optional-backend-api-change">H3. Optional-backend API change<a class="anchor" aria-label="anchor" href="#h3--optional-backend-api-change"></a>
+</h3>
+<p>A new <code>brms</code> release changes an argument or return
+structure. Core package tests still pass because <code>brms</code> is
+optional. A backend-specific CI job or local test detects the breakage.
+Capability-level validation prevents the package from claiming that
+optional Bayesian workflows are validated merely because core R code
+succeeds.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--graphic-regression">H4. Graphic regression<a class="anchor" aria-label="anchor" href="#h4--graphic-regression"></a>
+</h3>
+<p>A coordinate-order refactor rotates the ternary labels while leaving
+predicted values correct. Numeric unit tests pass. A visual regression
+or manual figure audit catches the mismatch. Scientific graphics need
+independent validation because wrong geometry can communicate wrong
+science even when the model numbers are correct.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--built-artifact-resource-failure">H5. Built-artifact resource failure<a class="anchor" aria-label="anchor" href="#h5--built-artifact-resource-failure"></a>
+</h3>
+<p>A report template exists in the source tree but is omitted from the
+built tarball because of an ignore rule.
+<code>devtools::load_all()</code> works, but the installed package
+fails. Clean-install validation from the real R-built tarball catches
+this class of packaging defect.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-validation-review">Appendix I. Short-answer validation review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-validation-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Does implemented mean validated?</strong> No.</li>
+<li>
+<strong>Why use invariants?</strong> They express mathematical
+properties that should hold across cases.</li>
+<li>
+<strong>What makes a golden test strong?</strong> An expected answer
+independent of the implementation.</li>
+<li>
+<strong>Why freeze scenarios?</strong> To detect numerical
+regressions across versions.</li>
+<li>
+<strong>Why simulate?</strong> To validate statistical behavior such
+as bias and coverage.</li>
+<li>
+<strong>Why repeat stochastic seeds?</strong> To evaluate algorithm
+stability, not just reproducibility of one run.</li>
+<li>
+<strong>Why test built tarballs?</strong> Installed
+resources/namespaces can differ from development-tree behavior.</li>
+<li>
+<strong>Why validate optional backends separately?</strong> Core
+success does not certify external integrations.</li>
+<li>
+<strong>What blocks release?</strong> Failed required tests,
+numerical gates, install, or ERROR/WARNING under the declared
+policy.</li>
+<li>
+<strong>What should PASS mean?</strong> PASS for an explicitly
+defined scope supported by archived evidence.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-evidence-for-scientific-software">Appendix J. Deeper conceptual notes on evidence for scientific
+software<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-evidence-for-scientific-software"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--validation-scope-must-be-explicit">J1. Validation scope must be explicit<a class="anchor" aria-label="anchor" href="#j1--validation-scope-must-be-explicit"></a>
+</h3>
+<p>A package can have a validated core and experimental extensions
+simultaneously. The correct statement is not “the package is validated”
+in the abstract, but “the declared core capabilities passed these gates
+under these environments, while optional capability X remains separately
+gated.” This scope-aware language is more credible and easier to
+maintain.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--statistical-validation-differs-from-numerical-regression-testing">J2. Statistical validation differs from numerical regression
+testing<a class="anchor" aria-label="anchor" href="#j2--statistical-validation-differs-from-numerical-regression-testing"></a>
+</h3>
+<p>A frozen numerical scenario detects unexpected software changes, but
+it does not prove statistical calibration. Coverage, bias,
+model-selection behavior, or optimum recovery require simulation under
+known data-generating mechanisms. Both types of evidence are necessary
+for advanced scientific methods.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--reproducibility-differs-from-replicability">J3. Reproducibility differs from replicability<a class="anchor" aria-label="anchor" href="#j3--reproducibility-differs-from-replicability"></a>
+</h3>
+<p>A fixed seed and archived environment make a computational result
+reproducible. Replicability asks whether the method performs similarly
+across independent datasets or simulations. A stochastic optimizer can
+be perfectly reproducible for seed 1 and still be unstable across seeds.
+Validation should assess both concepts.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--cross-platform-variability">J4. Cross-platform variability<a class="anchor" aria-label="anchor" href="#j4--cross-platform-variability"></a>
+</h3>
+<p>Small floating-point differences can occur across operating systems,
+BLAS/LAPACK implementations, and compiler toolchains. Tolerances should
+therefore reflect numerical analysis rather than arbitrary exact
+equality. At the same time, tolerances must remain tight enough to
+detect substantive regressions.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--release-evidence-should-be-immutable">J5. Release evidence should be immutable<a class="anchor" aria-label="anchor" href="#j5--release-evidence-should-be-immutable"></a>
+</h3>
+<p>After a release candidate is declared PASS, archive checksums for the
+exact tarball and validation outputs. If source files change, the prior
+PASS applies only to the prior artifact. Rebuild and rerun the relevant
+gates rather than carrying the label forward informally.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

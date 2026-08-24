@@ -60,8 +60,1257 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-sequential-mixture-experimentation-and-bayesian-optimization">mixRSMflow: Sequential Mixture Experimentation and Bayesian
+Optimization<a class="anchor" aria-label="anchor" href="#mixrsmflow-sequential-mixture-experimentation-and-bayesian-optimization"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 30<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> sequential augmentation after an
+initial experiment, information-based D/I/G augmentation,
+optimum-focused augmentation, response-adaptive experimentation,
+Gaussian-process Bayesian optimization, exploration/exploitation,
+stopping decisions, and reproducible staged experiments<br><strong>Companion material:</strong>
+<code>17-sequential-design.Rmd</code>,
+<code>18-modern-models.Rmd</code>; Extended Vignette 25 owns full
+optimality theory and 29 owns optimum-location bootstrap inference</p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>.
+Sequential experimentation can alter the data-collection process in
+response to earlier outcomes. Record every stage, seed, decision rule,
+and candidate region.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-ask-what-should-we-run-next">1. Why ask “what should we run next?”<a class="anchor" aria-label="anchor" href="#why-ask-what-should-we-run-next"></a>
+</h3>
+<p>Classical experimental design assumes that a complete run plan can
+often be chosen before observing outcomes. That is ideal when the
+experiment is inexpensive, parallelizable, and must preserve a simple
+pre-specified inferential structure.</p>
+<p>In many modern formulation studies, however, each run may be
+expensive:</p>
+<ul>
+<li>hyperspectral characterization;</li>
+<li>controlled-environment growth studies;</li>
+<li>long storage/stability assays;</li>
+<li>high-cost chemical synthesis;</li>
+<li>destructive biochemical analyses;</li>
+<li>field plots requiring substantial space.</li>
+</ul>
+<p>In such cases a staged experiment can be more efficient.</p>
+<p>The central principle is:</p>
+<p><strong>Use sequential adaptation only when it solves a real resource
+or information problem, and preserve a complete record of why each new
+run was chosen.</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>distinguish a one-shot design from a staged design;</li>
+<li>augment an existing design for D, I, or G information without using
+outcomes;</li>
+<li>augment around the current fitted optimum to reduce local decision
+uncertainty;</li>
+<li>explain the inferential difference between outcome-independent and
+response-adaptive augmentation;</li>
+<li>create a staged run history with explicit seeds;</li>
+<li>decide when a Gaussian-process surrogate is scientifically
+plausible;</li>
+<li>run optional Bayesian optimization with <code><a href="../reference/mix_bo.html">mix_bo()</a></code>;</li>
+<li>explain exploration versus exploitation;</li>
+<li>interpret Expected Improvement, Probability of Improvement, and UCB
+conceptually even when backend details are handled by the GP layer;</li>
+<li>verify that every proposed point satisfies mixture constraints;</li>
+<li>choose practical stopping criteria;</li>
+<li>compare classical augmentation with response-adaptive Bayesian
+optimization;</li>
+<li>avoid adaptive overfitting to noisy early responses;</li>
+<li>preserve reproducibility across sequential batches.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Stage</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Initial classical/optimal design</td>
+<td align="left">
+<code><a href="../reference/mix_design.html">mix_design()</a></code>,
+<code><a href="../reference/mix_optimal_design.html">mix_optimal_design()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Evaluate initial information</td>
+<td align="left"><code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Add D/I/G runs</td>
+<td align="left"><code><a href="../reference/mix_augment.html">mix_augment()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Fit current response</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Current optimum</td>
+<td align="left"><code><a href="../reference/mix_optimize.html">mix_optimize()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Add optimum-focused runs</td>
+<td align="left"><code>mix_augment(objective="optimum_uncertainty")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Gaussian-process Bayesian optimization</td>
+<td align="left"><code><a href="../reference/mix_bo.html">mix_bo()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Audit/provenance</td>
+<td align="left"><code><a href="../reference/mix_audit_trail.html">mix_audit_trail()</a></code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--two-types-of-sequential-experimentation">Part I. Two types of sequential experimentation<a class="anchor" aria-label="anchor" href="#part-i--two-types-of-sequential-experimentation"></a>
+</h2>
+<div class="section level3">
+<h3 id="outcome-independent-augmentation">4. Outcome-independent augmentation<a class="anchor" aria-label="anchor" href="#outcome-independent-augmentation"></a>
+</h3>
+<p>New runs are chosen from the design geometry and intended model,
+without using observed responses.</p>
+<p>Examples:</p>
+<ul>
+<li>increase D-information;</li>
+<li>reduce average prediction variance;</li>
+<li>reduce maximum prediction variance;</li>
+<li>restore rank after lost runs.</li>
+</ul>
+<p>This is closest to classical optimal design.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="outcome-adaptive-augmentation">5. Outcome-adaptive augmentation<a class="anchor" aria-label="anchor" href="#outcome-adaptive-augmentation"></a>
+</h3>
+<p>New runs depend on the current fitted response.</p>
+<p>Examples:</p>
+<ul>
+<li>reduce uncertainty near the current optimum;</li>
+<li>sample a promising region;</li>
+<li>discriminate between response-surface peaks;</li>
+<li>Gaussian-process Bayesian optimization.</li>
+</ul>
+<p>Because data influence future design points, the full sequential rule
+should be documented.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--stage-0-define-the-immutable-scientific-region">Part II. Stage 0: define the immutable scientific region<a class="anchor" aria-label="anchor" href="#part-ii--stage-0-define-the-immutable-scientific-region"></a>
+</h2>
+<div class="section level3">
+<h3 id="fix-feasibility-before-observing-outcomes">6. Fix feasibility before observing outcomes<a class="anchor" aria-label="anchor" href="#fix-feasibility-before-observing-outcomes"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.85</span>, <span class="fl">0.85</span>, <span class="fl">0.85</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The feasible region should not expand or shrink in response to
+convenient early outcomes unless an independent scientific reason
+justifies the change.</p>
+<p>This protects against moving the goalposts.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--stage-1-initial-design">Part III. Stage 1: initial design<a class="anchor" aria-label="anchor" href="#part-iii--stage-1-initial-design"></a>
+</h2>
+<div class="section level3">
+<h3 id="prediction-oriented-initial-design">7. Prediction-oriented initial design<a class="anchor" aria-label="anchor" href="#prediction-oriented-initial-design"></a>
+</h3>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30001</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Evaluate:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">E0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">E0</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E0</span>, <span class="st">"fds"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="why-not-start-with-too-few-points">Why not start with too few points?<a class="anchor" aria-label="anchor" href="#why-not-start-with-too-few-points"></a>
+</h4>
+<p>An adaptive algorithm cannot rescue a hopelessly underidentified
+starting model without consequences. The initial stage should provide
+enough region coverage to estimate a plausible baseline surface or
+surrogate.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--information-based-augmentation">Part IV. Information-based augmentation<a class="anchor" aria-label="anchor" href="#part-iv--information-based-augmentation"></a>
+</h2>
+<div class="section level3">
+<h3 id="add-i-oriented-runs-before-seeing-outcomes">8. Add I-oriented runs before seeing outcomes<a class="anchor" aria-label="anchor" href="#add-i-oriented-runs-before-seeing-outcomes"></a>
+</h3>
+<p>Suppose budget becomes available for three additional formulations
+before response measurement.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d1_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30101</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Compare:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">E1_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">d1_I</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">E0</span><span class="op">$</span><span class="va">measures</span></span>
+<span><span class="va">E1_I</span><span class="op">$</span><span class="va">measures</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="d-oriented-augmentation">9. D-oriented augmentation<a class="anchor" aria-label="anchor" href="#d-oriented-augmentation"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d1_D</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"D"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30102</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="g-oriented-augmentation">10. G-oriented augmentation<a class="anchor" aria-label="anchor" href="#g-oriented-augmentation"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d1_G</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30103</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="boundary-with-extended-vignette-25">Boundary with Extended Vignette 25<a class="anchor" aria-label="anchor" href="#boundary-with-extended-vignette-25"></a>
+</h4>
+<p>This vignette uses D/I/G as sequential objectives. Their full
+mathematical interpretation and FDS/VDG comparison are owned by Extended
+Vignette 25.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--observe-stage-1-outcomes">Part V. Observe Stage 1 outcomes<a class="anchor" aria-label="anchor" href="#part-v--observe-stage-1-outcomes"></a>
+</h2>
+<div class="section level3">
+<h3 id="teaching-response">11. Teaching response<a class="anchor" aria-label="anchor" href="#teaching-response"></a>
+</h3>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">30201</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stage1</span> <span class="op">&lt;-</span> <span class="va">d0</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">stage1</span><span class="op">$</span><span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">stage1</span>,</span>
+<span>  <span class="fl">5</span> <span class="op">*</span> <span class="va">A</span> <span class="op">+</span> <span class="fl">7</span> <span class="op">*</span> <span class="va">B</span> <span class="op">+</span> <span class="fl">6</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span></span>
+<span>  <span class="fl">3</span> <span class="op">*</span> <span class="va">A</span> <span class="op">*</span> <span class="va">B</span> <span class="op">-</span></span>
+<span>  <span class="fl">2</span> <span class="op">*</span> <span class="va">A</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">stage1</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.15</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Fit:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>,</span>
+<span>  <span class="va">stage1</span>,</span>
+<span>  <span class="va">d0</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit1</span><span class="op">)</span></span></code></pre></div>
+<p>The response simulation is a teaching example only.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--optimum-focused-augmentation">Part VI. Optimum-focused augmentation<a class="anchor" aria-label="anchor" href="#part-vi--optimum-focused-augmentation"></a>
+</h2>
+<div class="section level3">
+<h3 id="find-the-current-optimum">12. Find the current optimum<a class="anchor" aria-label="anchor" href="#find-the-current-optimum"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">op1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit1</span>,</span>
+<span>  goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30202</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op1</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="add-points-to-reduce-local-optimum-uncertainty">12.1 Add points to reduce local optimum uncertainty<a class="anchor" aria-label="anchor" href="#add-points-to-reduce-local-optimum-uncertainty"></a>
+</h4>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"optimum_uncertainty"</span>,</span>
+<span>  fit <span class="op">=</span> <span class="va">fit1</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30203</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">d_opt</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>This is response-adaptive because <code>fit1</code> depends on
+observed outcomes.</p>
+<p>State that fact explicitly in the methods.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--why-not-always-focus-near-the-current-optimum">Part VII. Why not always focus near the current optimum?<a class="anchor" aria-label="anchor" href="#part-vii--why-not-always-focus-near-the-current-optimum"></a>
+</h2>
+<div class="section level3">
+<h3 id="early-exploitation-can-be-risky">13. Early exploitation can be risky<a class="anchor" aria-label="anchor" href="#early-exploitation-can-be-risky"></a>
+</h3>
+<p>If Stage 1 is noisy, the current apparent optimum may be wrong.
+Adding all new points around it can trap the experiment in a local
+region and leave alternative peaks unexplored.</p>
+<p>A good sequential strategy balances:</p>
+<ul>
+<li>exploration of uncertain regions;</li>
+<li>exploitation of promising regions;</li>
+<li>model discrimination;</li>
+<li>practical run costs.</li>
+</ul>
+<p>This trade-off motivates Gaussian-process Bayesian optimization.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--gaussian-process-surrogate-models">Part VIII. Gaussian-process surrogate models<a class="anchor" aria-label="anchor" href="#part-viii--gaussian-process-surrogate-models"></a>
+</h2>
+<div class="section level3">
+<h3 id="surrogate-concept">14. Surrogate concept<a class="anchor" aria-label="anchor" href="#surrogate-concept"></a>
+</h3>
+<p>A Gaussian Process treats the unknown response function as a smooth
+stochastic surface. Given observed points, it produces:</p>
+<ul>
+<li>predicted mean response;</li>
+<li>predictive uncertainty;</li>
+<li>correlation across nearby candidate mixtures.</li>
+</ul>
+<p>An acquisition rule combines the mean and uncertainty to propose the
+next experiment.</p>
+<div class="section level4">
+<h4 id="important-distinction">Important distinction<a class="anchor" aria-label="anchor" href="#important-distinction"></a>
+</h4>
+<p>The GP surrogate is not a Scheffé polynomial. It is an alternative
+modeling layer for sequential search.</p>
+<p>Use it when flexible local prediction is more important than
+interpreting classical mixture coefficients.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="optional-mix_bo-workflow">15. Optional <code>mix_bo()</code> workflow<a class="anchor" aria-label="anchor" href="#optional-mix_bo-workflow"></a>
+</h3>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Requires DiceKriging.</span></span>
+<span>  <span class="va">bo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_bo.html">mix_bo</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">stage1</span>,</span>
+<span>    response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>    spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>    goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>    iterations <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>    candidate_n <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>    nugget <span class="op">=</span> <span class="fl">1e-8</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">30301</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">bo</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code><a href="../reference/mix_bo.html">mix_bo()</a></code> keeps candidate points inside the declared
+mixture specification.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--exploration-and-exploitation">Part IX. Exploration and exploitation<a class="anchor" aria-label="anchor" href="#part-ix--exploration-and-exploitation"></a>
+</h2>
+<div class="section level3">
+<h3 id="expected-improvement">16. Expected Improvement<a class="anchor" aria-label="anchor" href="#expected-improvement"></a>
+</h3>
+<p>Conceptually, Expected Improvement favors candidates that have a
+meaningful chance of exceeding the current best response and rewards
+both high predicted mean and useful uncertainty.</p>
+<p>It can be effective when locating a maximum is the primary goal.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="probability-of-improvement">17. Probability of Improvement<a class="anchor" aria-label="anchor" href="#probability-of-improvement"></a>
+</h3>
+<p>Probability of Improvement focuses more directly on the chance of
+beating the current best threshold.</p>
+<p>It can become overly exploitative depending on the threshold
+definition.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="upper-confidence-bound">18. Upper Confidence Bound<a class="anchor" aria-label="anchor" href="#upper-confidence-bound"></a>
+</h3>
+<p>UCB-style criteria add an uncertainty bonus to the predicted mean. A
+tuning factor controls the exploration/exploitation balance.</p>
+<div class="section level4">
+<h4 id="reporting-rule">Reporting rule<a class="anchor" aria-label="anchor" href="#reporting-rule"></a>
+</h4>
+<p>If a specific acquisition function or tuning parameter is exposed by
+the backend workflow, report it. Do not describe all Bayesian
+optimization runs simply as “the GP chose the next point.”</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--stopping-decisions">Part X. Stopping decisions<a class="anchor" aria-label="anchor" href="#part-x--stopping-decisions"></a>
+</h2>
+<div class="section level3">
+<h3 id="stop-for-scientific-not-cosmetic-reasons">19. Stop for scientific, not cosmetic, reasons<a class="anchor" aria-label="anchor" href="#stop-for-scientific-not-cosmetic-reasons"></a>
+</h3>
+<p>Possible stopping criteria include:</p>
+<ul>
+<li>fixed total run budget reached;</li>
+<li>expected improvement below a practical threshold;</li>
+<li>near-optimal region sufficiently narrow;</li>
+<li>prediction uncertainty below an experimental target;</li>
+<li>no meaningful improvement across several iterations;</li>
+<li>operational deadline or material exhaustion.</li>
+</ul>
+<p>A stopping rule chosen only after seeing an attractive maximum is
+susceptible to optimism.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--staged-agronomic-example-with-hyperspectral-phenotyping">Part XI. Staged agronomic example with hyperspectral
+phenotyping<a class="anchor" aria-label="anchor" href="#part-xi--staged-agronomic-example-with-hyperspectral-phenotyping"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-problem">20. Scientific problem<a class="anchor" aria-label="anchor" href="#scientific-problem"></a>
+</h3>
+<p>A three-component foliar formulation will be evaluated using an
+expensive hyperspectral and physiological pipeline. Only 15 formulations
+can be tested initially, with the possibility of five additional
+runs.</p>
+<div class="section level4">
+<h4 id="stage-0-feasibility">Stage 0: feasibility<a class="anchor" aria-label="anchor" href="#stage-0-feasibility"></a>
+</h4>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_hsi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Amino"</span>, <span class="st">"Seaweed"</span>, <span class="st">"Humic"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-1-eight-run-initial-design-for-this-teaching-example">Stage 1: eight-run initial design for this teaching example<a class="anchor" aria-label="anchor" href="#stage-1-eight-run-initial-design-for-this-teaching-example"></a>
+</h4>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_hsi</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30401</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-2-observe-response">Stage 2: observe response<a class="anchor" aria-label="anchor" href="#stage-2-observe-response"></a>
+</h4>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">30402</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dat1</span> <span class="op">&lt;-</span> <span class="va">d0</span><span class="op">$</span><span class="va">data</span></span>
+<span></span>
+<span><span class="va">dat1</span><span class="op">$</span><span class="va">index</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">dat1</span>,</span>
+<span>  <span class="fl">50</span> <span class="op">+</span> <span class="fl">8</span> <span class="op">*</span> <span class="va">Amino</span> <span class="op">+</span> <span class="fl">12</span> <span class="op">*</span> <span class="va">Seaweed</span> <span class="op">+</span> <span class="fl">6</span> <span class="op">*</span> <span class="va">Humic</span> <span class="op">+</span></span>
+<span>  <span class="fl">5</span> <span class="op">*</span> <span class="va">Amino</span> <span class="op">*</span> <span class="va">Seaweed</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dat1</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">1.0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-3-fit-and-diagnose">Stage 3: fit and diagnose<a class="anchor" aria-label="anchor" href="#stage-3-fit-and-diagnose"></a>
+</h4>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"index"</span>,</span>
+<span>  <span class="va">dat1</span>,</span>
+<span>  <span class="va">d0</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">f1</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-4a-design-based-addition">Stage 4A: design-based addition<a class="anchor" aria-label="anchor" href="#stage-4a-design-based-addition"></a>
+</h4>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30403</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-4b-response-focused-addition">Stage 4B: response-focused addition<a class="anchor" aria-label="anchor" href="#stage-4b-response-focused-addition"></a>
+</h4>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_peak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"optimum_uncertainty"</span>,</span>
+<span>  fit <span class="op">=</span> <span class="va">f1</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">30404</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="stage-4c-gp-route">Stage 4C: GP route<a class="anchor" aria-label="anchor" href="#stage-4c-gp-route"></a>
+</h4>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">bo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_bo.html">mix_bo</a></span><span class="op">(</span></span>
+<span>    <span class="va">dat1</span>,</span>
+<span>    response <span class="op">=</span> <span class="st">"index"</span>,</span>
+<span>    spec <span class="op">=</span> <span class="va">sp_hsi</span>,</span>
+<span>    goal <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>    iterations <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>    candidate_n <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>    seed <span class="op">=</span> <span class="fl">30405</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="decision">Decision<a class="anchor" aria-label="anchor" href="#decision"></a>
+</h4>
+<p>Compare the scientific objective:</p>
+<ul>
+<li>if accurate global prediction remains important, prefer
+information-based augmentation;</li>
+<li>if the next decision depends specifically on the current maximum,
+optimum-focused augmentation may be useful;</li>
+<li>if each response arrives sequentially and the response shape may not
+be well described by the current polynomial, GP Bayesian optimization
+can be considered.</li>
+</ul>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--sequential-reproducibility">Part XII. Sequential reproducibility<a class="anchor" aria-label="anchor" href="#part-xii--sequential-reproducibility"></a>
+</h2>
+<div class="section level3">
+<h3 id="preserve-stage-ids">21. Preserve stage IDs<a class="anchor" aria-label="anchor" href="#preserve-stage-ids"></a>
+</h3>
+<p>A real dataset should contain a column such as:</p>
+<pre class="text"><code><span><span class="va">stage</span></span></code></pre>
+<p>or</p>
+<pre class="text"><code><span><span class="va">batch_of_acquisition</span></span></code></pre>
+<p>Do not discard the distinction between initial and adaptively
+selected runs.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="preserve-algorithm-metadata">22. Preserve algorithm metadata<a class="anchor" aria-label="anchor" href="#preserve-algorithm-metadata"></a>
+</h3>
+<p>At every stage record:</p>
+<ul>
+<li>package version;</li>
+<li>mixture specification;</li>
+<li>current dataset hash/version;</li>
+<li>model used for adaptation;</li>
+<li>acquisition or augmentation objective;</li>
+<li>candidate count/resolution;</li>
+<li>seed;</li>
+<li>selected points;</li>
+<li>reason for stopping or continuing.</li>
+</ul>
+<p><code><a href="../reference/mix_audit_trail.html">mix_audit_trail()</a></code> helps with package-level provenance
+but should be complemented by project-level records.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--inference-after-adaptive-design">Part XIII. Inference after adaptive design<a class="anchor" aria-label="anchor" href="#part-xiii--inference-after-adaptive-design"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-inferential-interpretation-deserves-caution">23. Why inferential interpretation deserves caution<a class="anchor" aria-label="anchor" href="#why-inferential-interpretation-deserves-caution"></a>
+</h3>
+<p>If later design points are selected because of earlier responses, the
+final dataset is not identical to a fixed design chosen independently of
+outcomes.</p>
+<p>For pure prediction and optimization this may be acceptable and
+useful. For formal frequentist claims, adaptive sampling can complicate
+standard inference.</p>
+<p>The package does not silently certify all classical p-values as
+unaffected by response-adaptive design.</p>
+<p>Report the sequential process transparently and use appropriate
+methodological support when confirmatory inference is the objective.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiv--common-mistakes">Part XIV. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xiv--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="starting-bo-with-too-little-region-coverage">24. Starting BO with too little region coverage<a class="anchor" aria-label="anchor" href="#starting-bo-with-too-little-region-coverage"></a>
+</h3>
+<p>The surrogate needs informative initial data.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="focusing-every-new-point-near-the-current-best">25. Focusing every new point near the current best<a class="anchor" aria-label="anchor" href="#focusing-every-new-point-near-the-current-best"></a>
+</h3>
+<p>This can miss unexplored peaks.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="changing-mixture-bounds-because-early-data-are-inconvenient">26. Changing mixture bounds because early data are inconvenient<a class="anchor" aria-label="anchor" href="#changing-mixture-bounds-because-early-data-are-inconvenient"></a>
+</h3>
+<p>Feasibility should normally be fixed independently of outcomes.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="using-no-seed-for-stochastic-stages">27. Using no seed for stochastic stages<a class="anchor" aria-label="anchor" href="#using-no-seed-for-stochastic-stages"></a>
+</h3>
+<p>Sequential reproducibility requires seeds.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="hiding-which-runs-were-adaptively-selected">28. Hiding which runs were adaptively selected<a class="anchor" aria-label="anchor" href="#hiding-which-runs-were-adaptively-selected"></a>
+</h3>
+<p>Keep stage provenance.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="calling-bayesian-optimization-bayesian-inference-on-scheffé-coefficients">29. Calling Bayesian optimization “Bayesian inference on Scheffé
+coefficients”<a class="anchor" aria-label="anchor" href="#calling-bayesian-optimization-bayesian-inference-on-scheff%C3%A9-coefficients"></a>
+</h3>
+<p>It is a surrogate-based sequential optimization workflow.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="continuing-until-the-response-looks-impressive">30. Continuing until the response looks impressive<a class="anchor" aria-label="anchor" href="#continuing-until-the-response-looks-impressive"></a>
+</h3>
+<p>Predefine a run budget or meaningful stopping logic.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xv--function-selection-guide">Part XV. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xv--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Sequential goal</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Improve parameter information</td>
+<td align="left"><code>mix_augment(objective="D")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Improve average prediction</td>
+<td align="left"><code>mix_augment(objective="I")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Improve worst-case prediction</td>
+<td align="left"><code>mix_augment(objective="G")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Focus near current optimum</td>
+<td align="left"><code>mix_augment(objective="optimum_uncertainty", fit=...)</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Flexible GP sequential search</td>
+<td align="left"><code><a href="../reference/mix_bo.html">mix_bo()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Full D/I/G theory</td>
+<td align="left">Extended Vignette 25</td>
+</tr>
+<tr class="odd">
+<td align="left">Quantify current optimum location uncertainty</td>
+<td align="left">Extended Vignette 29</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xvi--reporting-checklist">Part XVI. Reporting checklist<a class="anchor" aria-label="anchor" href="#part-xvi--reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">fixed feasible region;</label></li>
+<li><label><input type="checkbox">initial design and
+criterion;</label></li>
+<li><label><input type="checkbox">initial sample size;</label></li>
+<li><label><input type="checkbox">stage identifiers;</label></li>
+<li><label><input type="checkbox">response observed before each
+adaptive step;</label></li>
+<li><label><input type="checkbox">model used at each
+stage;</label></li>
+<li><label><input type="checkbox">augmentation objective;</label></li>
+<li><label><input type="checkbox">GP backend if used;</label></li>
+<li><label><input type="checkbox">candidate-set size;</label></li>
+<li><label><input type="checkbox">acquisition function/settings if
+applicable;</label></li>
+<li><label><input type="checkbox">seed at every stochastic
+step;</label></li>
+<li><label><input type="checkbox">points proposed and actually
+executed;</label></li>
+<li><label><input type="checkbox">deviations from the proposed
+sequence;</label></li>
+<li><label><input type="checkbox">stopping rule;</label></li>
+<li><label><input type="checkbox">total run count;</label></li>
+<li><label><input type="checkbox">distinction between preplanned and
+adaptive runs;</label></li>
+<li><label><input type="checkbox">implications for confirmatory
+inference;</label></li>
+<li><label><input type="checkbox">audit trail and session
+information.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--compact-staged-design-script">Appendix A. Compact staged-design script<a class="anchor" aria-label="anchor" href="#appendix-a--compact-staged-design-script"></a>
+</h2>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260813</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">E0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">d0</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">E0</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Information-only augmentation before outcomes.</span></span>
+<span><span class="va">d1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260814</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># After observed responses are entered:</span></span>
+<span><span class="co"># fit1 &lt;- mix_fit("response", observed_data, d0, "scheffe_quadratic")</span></span>
+<span><span class="co"># d2 &lt;- mix_augment(d0, n_new=3, model="scheffe_quadratic",</span></span>
+<span><span class="co">#                   objective="optimum_uncertainty", fit=fit1, seed=20260815)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns staged data acquisition. It does not re-teach
+D/I/G mathematics (25), multiresponse desirability (28), optimum
+bootstrap uncertainty (29), general Bayesian response fitting (31),
+figure engineering (32), or software release validation (33).</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>Sequential experimentation is most valuable when every new run is
+expensive enough that learning from earlier stages justifies the added
+methodological complexity.</p>
+<p>A defensible sequence is:</p>
+<p><strong>fixed feasible region -&gt; informative initial design -&gt;
+observed response -&gt; diagnostics -&gt; explicit
+augmentation/acquisition rule -&gt; next stage -&gt; stopping rule -&gt;
+full provenance.</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-sequential-laboratories">Appendix C. Advanced sequential laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-sequential-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-outcome-independent-versus-outcome-adaptive-addition">C1. Laboratory: outcome-independent versus outcome-adaptive
+addition<a class="anchor" aria-label="anchor" href="#c1--laboratory-outcome-independent-versus-outcome-adaptive-addition"></a>
+</h3>
+<p>Start from the same eight-run design. Add three runs using I-optimal
+augmentation <strong>before</strong> responses and three using
+optimum-focused augmentation <strong>after</strong> fitting responses.
+Compare where the new points fall.</p>
+<div class="section level4">
+<h4 id="lesson">Lesson<a class="anchor" aria-label="anchor" href="#lesson"></a>
+</h4>
+<p>The first set improves global information under the declared model.
+The second set uses observed data and therefore targets the current
+decision region. They answer different sequential questions.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-early-noise-trap">C2. Laboratory: early-noise trap<a class="anchor" aria-label="anchor" href="#c2--laboratory-early-noise-trap"></a>
+</h3>
+<p>Simulate a noisy Stage 1 where the apparent best point is far from
+the true maximum. Apply optimum-focused augmentation and show how it can
+overexploit the wrong region.</p>
+<p>Then repeat with global I-augmentation or GP exploration.</p>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>Adaptive design can amplify early noise. Exploration is not wasted
+effort; it protects against premature certainty.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-staged-stopping">C3. Laboratory: staged stopping<a class="anchor" aria-label="anchor" href="#c3--laboratory-staged-stopping"></a>
+</h3>
+<p>Define a maximum budget of 20 runs. After each stage, record:</p>
+<ul>
+<li>best predicted response;</li>
+<li>maximum prediction variance;</li>
+<li>near-optimal region size;</li>
+<li>expected improvement or analogous acquisition value;</li>
+<li>number of runs used.</li>
+</ul>
+<p>Create a stopping table and identify which criterion would stop
+first.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-proposal-feasibility">C4. Laboratory: proposal feasibility<a class="anchor" aria-label="anchor" href="#c4--laboratory-proposal-feasibility"></a>
+</h3>
+<p>For every point proposed by <code><a href="../reference/mix_bo.html">mix_bo()</a></code> or
+<code><a href="../reference/mix_augment.html">mix_augment()</a></code>, check:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">proposals</span><span class="op">[</span>, <span class="va">sp</span><span class="op">$</span><span class="va">components</span><span class="op">]</span><span class="op">)</span> <span class="op">-</span> <span class="va">sp</span><span class="op">$</span><span class="va">total</span><span class="op">)</span></span></code></pre></div>
+<p>plus all bounds and linear restrictions.</p>
+<p>A sequential optimizer that proposes impossible mixtures is
+scientifically unusable even if its surrogate mathematics is otherwise
+correct.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--sequential-troubleshooting-matrix">Appendix D. Sequential troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--sequential-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely issue</th>
+<th align="left">Response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">new points duplicate existing runs</td>
+<td align="left">criterion favors replication</td>
+<td align="left">decide whether replication is acceptable</td>
+</tr>
+<tr class="even">
+<td align="left">optimum-focused points cluster too tightly</td>
+<td align="left">overexploitation</td>
+<td align="left">add global information/exploration</td>
+</tr>
+<tr class="odd">
+<td align="left">GP proposal jumps to boundary</td>
+<td align="left">high uncertainty or predicted mean</td>
+<td align="left">inspect acquisition logic and feasibility</td>
+</tr>
+<tr class="even">
+<td align="left">Stage 1 model rank deficient</td>
+<td align="left">initial design too small</td>
+<td align="left">repair design before adaptive inference</td>
+</tr>
+<tr class="odd">
+<td align="left">BO changes with seed</td>
+<td align="left">stochastic candidate search</td>
+<td align="left">report/repeat seeds</td>
+</tr>
+<tr class="even">
+<td align="left">little improvement after many runs</td>
+<td align="left">plateau/noise/model mismatch</td>
+<td align="left">apply stopping rule or reconsider surrogate</td>
+</tr>
+<tr class="odd">
+<td align="left">adaptive and preplanned analyses disagree</td>
+<td align="left">sampling path matters</td>
+<td align="left">report stage structure and inferential caveat</td>
+</tr>
+<tr class="even">
+<td align="left">proposed run operationally impossible</td>
+<td align="left">process constraints missing</td>
+<td align="left">add operational design restrictions</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-sequential-exercises">Appendix E. Guided sequential exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-sequential-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--initial-design-size">Exercise 1. Initial design size<a class="anchor" aria-label="anchor" href="#exercise-1--initial-design-size"></a>
+</h4>
+<p>Compare 6-, 8-, 10-, and 12-run initial designs for a quadratic
+model. Determine the minimum that gives stable baseline fitting.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--dig-augmentation">Exercise 2. D/I/G augmentation<a class="anchor" aria-label="anchor" href="#exercise-2--dig-augmentation"></a>
+</h4>
+<p>From one design, add two runs under each objective. Compare new-point
+locations and design metrics.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--lost-run">Exercise 3. Lost run<a class="anchor" aria-label="anchor" href="#exercise-3--lost-run"></a>
+</h4>
+<p>Simulate one failed experiment after Stage 1. Use augmentation to
+restore information without repeating the failed composition
+automatically.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--optimum-focus">Exercise 4. Optimum focus<a class="anchor" aria-label="anchor" href="#exercise-4--optimum-focus"></a>
+</h4>
+<p>Use <code>objective="optimum_uncertainty"</code> after fitting.
+Explain why the selected points are outcome-dependent.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--exploration-budget">Exercise 5. Exploration budget<a class="anchor" aria-label="anchor" href="#exercise-5--exploration-budget"></a>
+</h4>
+<p>Reserve one of four new runs for global exploration and three for
+local exploitation. Explain the logic before seeing new outcomes.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--gp-candidate-count">Exercise 6. GP candidate count<a class="anchor" aria-label="anchor" href="#exercise-6--gp-candidate-count"></a>
+</h4>
+<p>Run BO with several <code>candidate_n</code> values. Assess stability
+of the proposed next composition.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--nugget-sensitivity">Exercise 7. Nugget sensitivity<a class="anchor" aria-label="anchor" href="#exercise-7--nugget-sensitivity"></a>
+</h4>
+<p>Change the GP nugget and explain how assumed observation noise
+affects surrogate smoothness and acquisition behavior.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--stopping-rule">Exercise 8. Stopping rule<a class="anchor" aria-label="anchor" href="#exercise-8--stopping-rule"></a>
+</h4>
+<p>Define a practical expected-improvement or response-regret threshold
+before running the sequential simulation.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--stage-provenance">Exercise 9. Stage provenance<a class="anchor" aria-label="anchor" href="#exercise-9--stage-provenance"></a>
+</h4>
+<p>Design a data schema with columns <code>stage</code>,
+<code>proposal_method</code>, <code>seed</code>, <code>planned</code>,
+<code>executed</code>, and <code>reason_not_executed</code>.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--confirmatory-stage">Exercise 10. Confirmatory stage<a class="anchor" aria-label="anchor" href="#exercise-10--confirmatory-stage"></a>
+</h4>
+<p>After exploratory BO, design a small independent confirmatory batch
+around the selected region. Explain why this can strengthen
+evidence.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--resource-accounting">Exercise 11. Resource accounting<a class="anchor" aria-label="anchor" href="#exercise-11--resource-accounting"></a>
+</h4>
+<p>Add run costs and compare a 15-run one-shot design with an 8+4+3
+staged design.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A paper says “five additional points were selected adaptively”
+without the rule. Draft the information needed to reproduce the adaptive
+path.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-sequential-audit">Appendix F. Reviewer-style sequential audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-sequential-audit"></a>
+</h2>
+<p>Require:</p>
+<ol style="list-style-type: decimal">
+<li>initial design;</li>
+<li>fixed feasible region;</li>
+<li>stage sizes;</li>
+<li>exact adaptation objective;</li>
+<li>response model/surrogate at every stage;</li>
+<li>candidate generation;</li>
+<li>acquisition settings;</li>
+<li>random seeds;</li>
+<li>proposed versus executed points;</li>
+<li>stopping rule;</li>
+<li>whether confirmatory inference used adaptively selected data;</li>
+<li>full stage provenance.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="information-only-augmentation">Information-only augmentation<a class="anchor" aria-label="anchor" href="#information-only-augmentation"></a>
+</h4>
+<blockquote>
+<p>Additional runs were selected without reference to observed
+responses, using I-oriented augmentation to improve average prediction
+precision of the pre-specified quadratic mixture model.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="response-adaptive-augmentation">Response-adaptive augmentation<a class="anchor" aria-label="anchor" href="#response-adaptive-augmentation"></a>
+</h4>
+<blockquote>
+<p>After Stage 1 responses were analyzed, the next formulations were
+selected to reduce uncertainty near the current fitted optimum. Because
+the design depended on earlier outcomes, the sequential selection rule
+and stage structure are reported explicitly.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="bayesian-optimization">Bayesian optimization<a class="anchor" aria-label="anchor" href="#bayesian-optimization"></a>
+</h4>
+<blockquote>
+<p>A Gaussian-process surrogate was updated sequentially and candidate
+formulations were proposed within the fixed feasible mixture region. The
+procedure was used for efficient search rather than for direct inference
+on Scheffé coefficients.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="stopping">Stopping<a class="anchor" aria-label="anchor" href="#stopping"></a>
+</h4>
+<blockquote>
+<p>Sequential experimentation stopped when the pre-specified run budget
+was reached and the expected improvement from additional formulations
+fell below the practical response threshold.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-sequential-case-bank">Appendix H. Applied sequential case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-sequential-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--expensive-hyperspectral-calibration">H1. Expensive hyperspectral calibration<a class="anchor" aria-label="anchor" href="#h1--expensive-hyperspectral-calibration"></a>
+</h3>
+<p>Each formulation requires destructive chemistry plus hyperspectral
+imaging. An eight-run I-optimal initial design provides broad support.
+After Stage 1, three additional runs may either improve global
+prediction or focus on the current optimum. Because the measurements are
+expensive, the staged design has clear operational value. Every proposed
+and executed formulation should be archived with stage and seed.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--long-term-storage-stability">H2. Long-term storage stability<a class="anchor" aria-label="anchor" href="#h2--long-term-storage-stability"></a>
+</h3>
+<p>A formulation takes three months to evaluate. Running all candidates
+at once is costly. A staged strategy can first screen broad composition
+space, then add formulations near promising stability regions. However,
+the long delay may favor batch augmentation rather than
+one-run-at-a-time BO. Sequential design should reflect the real feedback
+cycle.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--early-noisy-biological-response">H3. Early noisy biological response<a class="anchor" aria-label="anchor" href="#h3--early-noisy-biological-response"></a>
+</h3>
+<p>Greenhouse response is highly variable. If early observations are
+noisy, local optimum-focused augmentation can chase a false peak.
+Reserve some new runs for global prediction or uncertainty reduction.
+This case demonstrates why exploration is not merely computational
+theory but protection against biological noise.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--production-line-bo">H4. Production-line BO<a class="anchor" aria-label="anchor" href="#h4--production-line-bo"></a>
+</h3>
+<p>A manufacturing formulation can be tested sequentially with automated
+response measurement. GP Bayesian optimization becomes operationally
+realistic because each run can inform the next. The feasibility region
+remains fixed, and the acquisition rule should be logged. A final
+independent confirmatory batch can separate exploratory search from
+confirmatory performance assessment.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--sequential-model-discrimination">H5. Sequential model discrimination<a class="anchor" aria-label="anchor" href="#h5--sequential-model-discrimination"></a>
+</h3>
+<p>After an initial quadratic design, residuals suggest possible
+higher-order blending. Rather than immediately adding a complex model
+with weak information, new runs can be placed where the quadratic and
+alternative model differ most. This is a sequential
+design-discrimination problem rather than an optimum-search problem.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-sequential-review">Appendix I. Short-answer sequential review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-sequential-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>What makes augmentation outcome-independent?</strong> New
+points are chosen without using observed responses.</li>
+<li>
+<strong>What makes a design response-adaptive?</strong> Earlier
+outcomes influence later run locations.</li>
+<li>
+<strong>Why store stage labels?</strong> To reconstruct the adaptive
+sampling path.</li>
+<li>
+<strong>What is exploration?</strong> Sampling uncertain or poorly
+covered regions.</li>
+<li>
+<strong>What is exploitation?</strong> Sampling where high response
+is currently predicted.</li>
+<li>
+<strong>Why can early exploitation fail?</strong> Noise can create a
+false apparent optimum.</li>
+<li>
+<strong>What does a GP surrogate add?</strong> Flexible mean and
+uncertainty over the feasible region.</li>
+<li>
+<strong>What should define stopping?</strong> Pre-specified budget
+or meaningful information/improvement threshold.</li>
+<li>
+<strong>Why confirm after BO?</strong> Independent confirmation
+strengthens evidence after exploratory adaptive search.</li>
+<li>
+<strong>What never changes silently?</strong> The declared
+scientific feasibility constraints.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-adaptive-science">Appendix J. Deeper conceptual notes on adaptive science<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-adaptive-science"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--sequential-efficiency-has-a-cost-path-dependence">J1. Sequential efficiency has a cost: path dependence<a class="anchor" aria-label="anchor" href="#j1--sequential-efficiency-has-a-cost-path-dependence"></a>
+</h3>
+<p>A fixed design is chosen independently of outcomes. An adaptive
+design depends on the response path. Two experiments starting from the
+same region can select different later runs because early noise differs.
+This path dependence is precisely what creates efficiency, but it also
+complicates simple confirmatory interpretations. Preserve the sequence
+and avoid presenting the final run set as though it had been
+preplanned.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--batch-versus-one-at-a-time-adaptation">J2. Batch versus one-at-a-time adaptation<a class="anchor" aria-label="anchor" href="#j2--batch-versus-one-at-a-time-adaptation"></a>
+</h3>
+<p>Many agricultural experiments return outcomes only after weeks or
+months. In such cases, one-at-a-time Bayesian optimization may be
+unrealistic. Batch augmentation is often more practical: select several
+informative points, execute them together, update the model after the
+batch, and repeat. The methodological framework should match the
+temporal structure of feedback.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--exploration-as-insurance">J3. Exploration as insurance<a class="anchor" aria-label="anchor" href="#j3--exploration-as-insurance"></a>
+</h3>
+<p>Exploration samples uncertain regions even when their current mean
+prediction is not high. In noisy biological systems this can prevent
+premature commitment to a false optimum. The value of exploration
+increases when the surrogate or polynomial is uncertain and when
+multiple peaks are plausible.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--stopping-is-a-decision-rule">J4. Stopping is a decision rule<a class="anchor" aria-label="anchor" href="#j4--stopping-is-a-decision-rule"></a>
+</h3>
+<p>A sequential experiment can continue indefinitely if the only
+criterion is “perhaps the next run improves the response.” Predefine a
+budget, minimum expected improvement, acceptable prediction variance, or
+uncertainty-region target. Stopping rules are part of reproducibility
+and should appear in the methods.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--exploratory-versus-confirmatory-stages">J5. Exploratory versus confirmatory stages<a class="anchor" aria-label="anchor" href="#j5--exploratory-versus-confirmatory-stages"></a>
+</h3>
+<p>A practical strategy is to use adaptive search for exploration and
+then reserve an independent confirmatory stage for the selected region.
+This separation can strengthen scientific communication: the adaptive
+algorithm finds promising formulations, while the confirmatory stage
+tests them under a pre-specified protocol.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

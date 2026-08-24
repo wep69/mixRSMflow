@@ -60,8 +60,1387 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-mixture-process-mixture-amount-blocking-and-split-plot-experiments">mixRSMflow: Mixture-Process, Mixture-Amount, Blocking, and
+Split-Plot Experiments<a class="anchor" aria-label="anchor" href="#mixrsmflow-mixture-process-mixture-amount-blocking-and-split-plot-experiments"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 27<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> mixture-process design, process
+fractionation, mixture-amount experiments, blocks, Latin-style process
+layouts, hard-to-change factors, split-plot identifiers, design
+hierarchy and mixed-model linkage<br><strong>Companion material:</strong>
+<code>10-mixture-process.Rmd</code>,
+<code>11-blocks-and-splitplots.Rmd</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. It
+treats experimental structure as a consequence of randomization and
+operations. It does not re-teach the general theory of GLM/GLS/Bayesian
+response models, which belongs to Extended Vignette 31.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-composition-is-sometimes-only-half-the-experiment">1. Why composition is sometimes only half the experiment<a class="anchor" aria-label="anchor" href="#why-composition-is-sometimes-only-half-the-experiment"></a>
+</h3>
+<p>A formulation can perform differently depending on how it is
+processed, applied, stored, cured, sprayed, heated, irrigated, or
+manufactured. Mixture-process experiments combine:</p>
+<ul>
+<li>constrained component proportions;</li>
+<li>ordinary controllable process factors.</li>
+</ul>
+<p>The two types of variables must not be treated as if they have the
+same geometry.</p>
+<p>A process variable such as temperature can vary independently within
+its range. A mixture component cannot vary independently because the
+component total remains fixed.</p>
+<p>The central rule is:</p>
+<p><strong>Preserve the mixture constraint in the basis and preserve the
+experimental randomization in the error structure.</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>build a mixture-process design by crossing a mixture design with
+process settings;</li>
+<li>explain the distinction between mixture and process terms;</li>
+<li>fit process polynomial terms together with a Scheffé mixture
+basis;</li>
+<li>include mixture-process interactions explicitly;</li>
+<li>fractionate a large crossed design using D-information or random
+subsampling;</li>
+<li>state what information may be lost through fractionation;</li>
+<li>design mixture-amount experiments;</li>
+<li>create blocks that reduce imbalance in model columns;</li>
+<li>inspect block diagnostics instead of assuming exact
+orthogonality;</li>
+<li>construct Latin-style arrangements for two process factors;</li>
+<li>identify hard-to-change factors before randomization;</li>
+<li>create split-plot identifiers with
+<code>mix_design(type="split_plot")</code>;</li>
+<li>connect <code>.whole_plot</code> and <code>.subplot</code>
+identifiers to <code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code>;</li>
+<li>distinguish block design from residual covariance modeling;</li>
+<li>report process settings, whole-plot structure, and fractionation
+transparently;</li>
+<li>build an integrated agronomic mixture-process workflow.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Task</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Generate mixture-process design</td>
+<td align="left"><code>mix_design(type="mixture_process")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Generate mixture-amount design</td>
+<td align="left"><code>mix_design(type="mixture_amount")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Create split-plot design identifiers</td>
+<td align="left"><code>mix_design(type="split_plot")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Fractionate a process-crossed design</td>
+<td align="left"><code><a href="../reference/mix_fractionate_process.html">mix_fractionate_process()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Allocate runs to blocks</td>
+<td align="left"><code><a href="../reference/mix_block_design.html">mix_block_design()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Create Latin-style process arrangement</td>
+<td align="left"><code><a href="../reference/mix_latin_process_design.html">mix_latin_process_design()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Build combined model matrix</td>
+<td align="left"><code>mix_basis(..., process=, mixture_process=TRUE)</code></td>
+</tr>
+<tr class="even">
+<td align="left">Fit combined fixed model</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Fit hierarchical model</td>
+<td align="left"><code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Design diagnostics</td>
+<td align="left"><code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Prediction/graphics</td>
+<td align="left">
+<code><a href="../reference/mix_predict.html">mix_predict()</a></code>,
+<code><a href="../reference/mix_plot.html">mix_plot()</a></code>
+</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--mixture-process-foundations">Part I. Mixture-process foundations<a class="anchor" aria-label="anchor" href="#part-i--mixture-process-foundations"></a>
+</h2>
+<div class="section level3">
+<h3 id="agronomic-example-biostimulant-formulation-and-application-conditions">4. Agronomic example: biostimulant formulation and application
+conditions<a class="anchor" aria-label="anchor" href="#agronomic-example-biostimulant-formulation-and-application-conditions"></a>
+</h3>
+<p>Suppose a foliar formulation contains:</p>
+<ul>
+<li>amino-acid fraction <code>AA</code>;</li>
+<li>seaweed fraction <code>SW</code>;</li>
+<li>humic fraction <code>HA</code>.</li>
+</ul>
+<p>The response may also depend on:</p>
+<ul>
+<li>spray volume;</li>
+<li>application temperature.</li>
+</ul>
+<p>Create the mixture region:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"AA"</span>, <span class="st">"SW"</span>, <span class="st">"HA"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="full-crossed-mixture-process-design">5. Full crossed mixture-process design<a class="anchor" aria-label="anchor" href="#full-crossed-mixture-process-design"></a>
+</h3>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"mixture_process"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">mp</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<p>The mixture rows preserve the fixed-sum constraint. Process variables
+are then crossed with those mixtures.</p>
+<div class="section level4">
+<h4 id="design-size-calculation">Design-size calculation<a class="anchor" aria-label="anchor" href="#design-size-calculation"></a>
+</h4>
+<p>If the base mixture design has <code>n_m</code> blends and the
+process grid has <code>n_p</code> combinations, the complete cross
+has</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><msub><mi>n</mi><mi>m</mi></msub><msub><mi>n</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">
+n=n_m n_p
+</annotation></semantics></math></p>
+<p>runs before replication or fractionation.</p>
+<p>This can grow rapidly.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--combined-model-basis">Part II. Combined model basis<a class="anchor" aria-label="anchor" href="#part-ii--combined-model-basis"></a>
+</h2>
+<div class="section level3">
+<h3 id="inspect-the-basis-before-fitting">6. Inspect the basis before fitting<a class="anchor" aria-label="anchor" href="#inspect-the-basis-before-fitting"></a>
+</h3>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Xmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_basis.html">mix_basis</a></span><span class="op">(</span></span>
+<span>  <span class="va">mp</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"spray_volume"</span>, <span class="st">"temperature"</span><span class="op">)</span>,</span>
+<span>  process_order <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">Xmp</span><span class="op">)</span></span></code></pre></div>
+<p>The basis contains:</p>
+<ul>
+<li>mixture terms;</li>
+<li>process terms up to the declared order;</li>
+<li>mixture-process interactions when requested.</li>
+</ul>
+<div class="section level4">
+<h4 id="interpretation-boundary">Interpretation boundary<a class="anchor" aria-label="anchor" href="#interpretation-boundary"></a>
+</h4>
+<p>A term such as <code>SW × temperature</code> means the blending
+contribution associated with the seaweed component changes across
+temperature. It does not mean SW and temperature are two ordinary
+independent factors in a common factorial cube.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="simulate-a-teaching-response">7. Simulate a teaching response<a class="anchor" aria-label="anchor" href="#simulate-a-teaching-response"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">27002</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mp</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">mp</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="fl">5.0</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">+</span></span>
+<span>  <span class="fl">7.0</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">+</span></span>
+<span>  <span class="fl">6.0</span> <span class="op">*</span> <span class="va">HA</span> <span class="op">+</span></span>
+<span>  <span class="fl">2.0</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">-</span></span>
+<span>  <span class="fl">1.5</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">*</span> <span class="va">HA</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.025</span> <span class="op">*</span> <span class="va">spray_volume</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.040</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.020</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">mp</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.20</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Fit:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">mp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"spray_volume"</span>, <span class="st">"temperature"</span><span class="op">)</span>,</span>
+<span>  process_order <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_mp</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="predict-at-specific-process-settings">8. Predict at specific process settings<a class="anchor" aria-label="anchor" href="#predict-at-specific-process-settings"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">new_mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  AA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.40</span>, <span class="fl">0.25</span><span class="op">)</span>,</span>
+<span>  SW <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.30</span>, <span class="fl">0.25</span><span class="op">)</span>,</span>
+<span>  HA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.30</span>, <span class="fl">0.50</span><span class="op">)</span>,</span>
+<span>  spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">30</span>, <span class="fl">30</span>, <span class="fl">30</span><span class="op">)</span>,</span>
+<span>  temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_predict.html">mix_predict</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit_mp</span>,</span>
+<span>  newdata <span class="op">=</span> <span class="va">new_mp</span>,</span>
+<span>  interval <span class="op">=</span> <span class="st">"confidence"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A mixture-process surface should generally be interpreted at declared
+process settings or through process slices. A single ternary surface
+cannot represent all process combinations simultaneously.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--fractionating-a-large-crossed-design">Part III. Fractionating a large crossed design<a class="anchor" aria-label="anchor" href="#part-iii--fractionating-a-large-crossed-design"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-fractionation-is-needed">9. Why fractionation is needed<a class="anchor" aria-label="anchor" href="#why-fractionation-is-needed"></a>
+</h3>
+<p>Suppose the process variables have:</p>
+<ul>
+<li>three temperature levels;</li>
+<li>three spray-volume levels;</li>
+<li>three drying-time levels.</li>
+</ul>
+<p>A modest mixture design crossed with 27 process combinations can
+become expensive.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mp_large</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"mixture_process"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    dry_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="d-information-fractionation">10. D-information fractionation<a class="anchor" aria-label="anchor" href="#d-information-fractionation"></a>
+</h3>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mp_half</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fractionate_process.html">mix_fractionate_process</a></span><span class="op">(</span></span>
+<span>  design <span class="op">=</span> <span class="va">mp_large</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"temperature"</span>, <span class="st">"spray_volume"</span>, <span class="st">"dry_time"</span><span class="op">)</span>,</span>
+<span>  fraction <span class="op">=</span> <span class="fl">0.50</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  process_order <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  mixture_process <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27101</span>,</span>
+<span>  exchange_iter <span class="op">=</span> <span class="fl">500</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mp_half</span></span></code></pre></div>
+<p>The fractionation objective is model-dependent. A design that
+supports first-order process effects may not adequately support
+quadratic process terms and all mixture-process interactions.</p>
+<div class="section level4">
+<h4 id="reporting-rule">Reporting rule<a class="anchor" aria-label="anchor" href="#reporting-rule"></a>
+</h4>
+<p>State:</p>
+<ul>
+<li>original number of candidate runs;</li>
+<li>retained fraction or number of runs;</li>
+<li>fractionation method;</li>
+<li>protected model basis;</li>
+<li>seed;</li>
+<li>final design diagnostics.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="random-fractionation-as-a-benchmark">11. Random fractionation as a benchmark<a class="anchor" aria-label="anchor" href="#random-fractionation-as-a-benchmark"></a>
+</h3>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mp_random</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"mixture_process"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  fraction <span class="op">=</span> <span class="fl">0.50</span>,</span>
+<span>  fraction_method <span class="op">=</span> <span class="st">"random"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27102</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Random fractionation can be useful as a simple baseline, but do not
+assume it preserves the intended model as efficiently as a model-based
+fraction.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--mixture-amount-experiments">Part IV. Mixture-amount experiments<a class="anchor" aria-label="anchor" href="#part-iv--mixture-amount-experiments"></a>
+</h2>
+<div class="section level3">
+<h3 id="composition-and-total-amount">12. Composition and total amount<a class="anchor" aria-label="anchor" href="#composition-and-total-amount"></a>
+</h3>
+<p>A mixture experiment usually fixes the total and varies only
+proportions. Some applications need both composition and total
+amount.</p>
+<p>Example: a foliar treatment contains three active fractions, while
+the total concentration can be 50, 100, or 150 units.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"mixture_amount"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  amount <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="fl">100</span>, <span class="fl">150</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ma</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>Composition and amount answer different questions:</p>
+<ul>
+<li>composition asks how the relative blend changes the response;</li>
+<li>amount asks how much total material is applied.</li>
+</ul>
+<p>A response can be optimal in composition at one total amount and not
+at another.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--blocking">Part V. Blocking<a class="anchor" aria-label="anchor" href="#part-v--blocking"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-block-a-mixture-experiment">13. Why block a mixture experiment?<a class="anchor" aria-label="anchor" href="#why-block-a-mixture-experiment"></a>
+</h3>
+<p>Runs may occur across:</p>
+<ul>
+<li>field blocks;</li>
+<li>greenhouse benches;</li>
+<li>manufacturing days;</li>
+<li>operators;</li>
+<li>instrument sessions;</li>
+<li>experimental batches.</li>
+</ul>
+<p>Blocking should be declared before randomization when possible.</p>
+<p>Create a base design:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">base</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">3</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Allocate to two blocks:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_block_design.html">mix_block_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">base</span>,</span>
+<span>  n_blocks <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  iterations <span class="op">=</span> <span class="fl">5000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27201</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">bd</span><span class="op">$</span><span class="va">block_diagnostics</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="orthogonality-is-an-achieved-property-not-a-label">14. Orthogonality is an achieved property, not a label<a class="anchor" aria-label="anchor" href="#orthogonality-is-an-achieved-property-not-a-label"></a>
+</h3>
+<p><code><a href="../reference/mix_block_design.html">mix_block_design()</a></code> uses a search procedure to reduce
+imbalance of standardized model columns among blocks.</p>
+<p>Inspect the diagnostics.</p>
+<p>Do not report the blocks as orthogonal unless the numerical criterion
+actually supports that statement.</p>
+<div class="section level4">
+<h4 id="practical-rule">Practical rule<a class="anchor" aria-label="anchor" href="#practical-rule"></a>
+</h4>
+<p>A slightly less balanced block assignment may be preferable if it
+avoids impossible run logistics or improves randomization
+credibility.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--latin-style-process-arrangements">Part VI. Latin-style process arrangements<a class="anchor" aria-label="anchor" href="#part-vi--latin-style-process-arrangements"></a>
+</h2>
+<div class="section level3">
+<h3 id="two-process-variables">15. Two process variables<a class="anchor" aria-label="anchor" href="#two-process-variables"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_latin_process_design.html">mix_latin_process_design</a></span><span class="op">(</span></span>
+<span>  spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>  process1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  process2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    drying_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27301</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">lat</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<p>A Latin-style layout can balance two process dimensions while the
+mixture portion follows its own design.</p>
+<div class="section level4">
+<h4 id="scientific-caution">Scientific caution<a class="anchor" aria-label="anchor" href="#scientific-caution"></a>
+</h4>
+<p>Mathematical balance does not override physical randomization. If
+temperature requires a chamber setting that cannot be changed freely, a
+split-plot structure may be more realistic.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--hard-to-change-factors-and-split-plots">Part VII. Hard-to-change factors and split plots<a class="anchor" aria-label="anchor" href="#part-vii--hard-to-change-factors-and-split-plots"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-split-plots-arise-naturally">16. Why split plots arise naturally<a class="anchor" aria-label="anchor" href="#why-split-plots-arise-naturally"></a>
+</h3>
+<p>Suppose spray volume can be changed quickly but application
+temperature requires resetting an environmental chamber. Temperature is
+hard to change.</p>
+<p>A fully randomized run order may be operationally impossible.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_split</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"split_plot"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">40</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  hard_to_change <span class="op">=</span> <span class="st">"temperature"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27401</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sp_split</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<p>The design creates identifiers such as:</p>
+<ul>
+<li>
+<code>.whole_plot</code>;</li>
+<li>
+<code>.subplot</code>.</li>
+</ul>
+<p>These identifiers represent the experimental hierarchy and should
+flow into the model.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="why-ordinary-ols-is-not-enough-for-a-split-plot">17. Why ordinary OLS is not enough for a split plot<a class="anchor" aria-label="anchor" href="#why-ordinary-ols-is-not-enough-for-a-split-plot"></a>
+</h3>
+<p>Observations within the same whole plot share an experimental unit
+and are not independent replicates for the hard-to-change factor.</p>
+<p>An analysis that fits every process and mixture term with one
+residual error can use the wrong error information.</p>
+<p>Use <code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code> when the hierarchy requires random
+effects.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="fit-a-hierarchical-mixture-process-model">18. Fit a hierarchical mixture-process model<a class="anchor" aria-label="anchor" href="#fit-a-hierarchical-mixture-process-model"></a>
+</h3>
+<p>Create a teaching response:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">27402</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_split</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_split</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="fl">5</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">+</span> <span class="fl">7</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">+</span> <span class="fl">6</span> <span class="op">*</span> <span class="va">HA</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.04</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.02</span> <span class="op">*</span> <span class="va">spray_volume</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">sp_split</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.20</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Fit when <code>lme4</code> is available:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fit_split</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_mixed.html">mix_fit_mixed</a></span><span class="op">(</span></span>
+<span>    response <span class="op">=</span> <span class="st">"response"</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">sp_split</span>,</span>
+<span>    random <span class="op">=</span> <span class="st">"(1 | .whole_plot)"</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"temperature"</span>, <span class="st">"spray_volume"</span><span class="op">)</span>,</span>
+<span>    mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">fit_split</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>The random term is not a convenience. It represents variation among
+whole plots created by the restricted randomization.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--blocks-versus-random-effects">Part VIII. Blocks versus random effects<a class="anchor" aria-label="anchor" href="#part-viii--blocks-versus-random-effects"></a>
+</h2>
+<div class="section level3">
+<h3 id="design-and-analysis-layers">19. Design and analysis layers<a class="anchor" aria-label="anchor" href="#design-and-analysis-layers"></a>
+</h3>
+<p><code><a href="../reference/mix_block_design.html">mix_block_design()</a></code> creates the allocation.
+<code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code> estimates a model that can represent
+grouped experimental variation.</p>
+<p>These are related but distinct layers.</p>
+<p>A well-blocked experiment can still be analyzed incorrectly if the
+block structure is ignored. A mixed model cannot recreate randomization
+information that was never recorded.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--a-complete-agronomic-mixture-process-case-study">Part IX. A complete agronomic mixture-process case study<a class="anchor" aria-label="anchor" href="#part-ix--a-complete-agronomic-mixture-process-case-study"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-question">20. Scientific question<a class="anchor" aria-label="anchor" href="#scientific-question"></a>
+</h3>
+<p>A foliar biostimulant contains amino acids, seaweed extract, and
+humic substances. Researchers want to identify formulations that perform
+well across application conditions.</p>
+<p>Composition:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>A</mi><mo>+</mo><mi>S</mi><mi>W</mi><mo>+</mo><mi>H</mi><mi>A</mi><mo>=</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+AA+SW+HA=1.
+</annotation></semantics></math></p>
+<p>Process variables:</p>
+<ul>
+<li>spray volume: 20, 30, 40 L/ha equivalent;</li>
+<li>chamber temperature: 20, 30, 40 degrees C.</li>
+</ul>
+<p>Temperature is hard to change.</p>
+<div class="section level4">
+<h4 id="step-1-specification">Step 1: specification<a class="anchor" aria-label="anchor" href="#step-1-specification"></a>
+</h4>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"AA"</span>, <span class="st">"SW"</span>, <span class="st">"HA"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-2-split-plot-design">Step 2: split-plot design<a class="anchor" aria-label="anchor" href="#step-2-split-plot-design"></a>
+</h4>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"split_plot"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    spray_volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">40</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  hard_to_change <span class="op">=</span> <span class="st">"temperature"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">27501</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-3-randomize-according-to-the-actual-physical-protocol">Step 3: randomize according to the actual physical protocol<a class="anchor" aria-label="anchor" href="#step-3-randomize-according-to-the-actual-physical-protocol"></a>
+</h4>
+<p>The package identifiers support the structure, but the laboratory or
+field randomization should be documented independently.</p>
+</div>
+<div class="section level4">
+<h4 id="step-4-enter-observed-response">Step 4: enter observed response<a class="anchor" aria-label="anchor" href="#step-4-enter-observed-response"></a>
+</h4>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Teaching simulation only.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">27502</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">design</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">biomass</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">design</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="fl">20</span> <span class="op">+</span></span>
+<span>  <span class="fl">6</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">+</span> <span class="fl">9</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">+</span> <span class="fl">7</span> <span class="op">*</span> <span class="va">HA</span> <span class="op">+</span></span>
+<span>  <span class="fl">3</span> <span class="op">*</span> <span class="va">AA</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.05</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.03</span> <span class="op">*</span> <span class="va">spray_volume</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.02</span> <span class="op">*</span> <span class="va">SW</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">design</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-5-hierarchical-fit">Step 5: hierarchical fit<a class="anchor" aria-label="anchor" href="#step-5-hierarchical-fit"></a>
+</h4>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit_mixed.html">mix_fit_mixed</a></span><span class="op">(</span></span>
+<span>    response <span class="op">=</span> <span class="st">"biomass"</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">design</span>,</span>
+<span>    random <span class="op">=</span> <span class="st">"(1 | .whole_plot)"</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>    process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"temperature"</span>, <span class="st">"spray_volume"</span><span class="op">)</span>,</span>
+<span>    mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-6-diagnostics">Step 6: diagnostics<a class="anchor" aria-label="anchor" href="#step-6-diagnostics"></a>
+</h4>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">"fit"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-7-process-conditioned-predictions">Step 7: process-conditioned predictions<a class="anchor" aria-label="anchor" href="#step-7-process-conditioned-predictions"></a>
+</h4>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">newdata</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  AA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.35</span>, <span class="fl">0.50</span><span class="op">)</span>,</span>
+<span>  SW <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.35</span>, <span class="fl">0.20</span><span class="op">)</span>,</span>
+<span>  HA <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.30</span>, <span class="fl">0.30</span><span class="op">)</span>,</span>
+<span>  temperature <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>  spray_volume <span class="op">=</span> <span class="fl">30</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">"fit"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/mix_predict.html">mix_predict</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">newdata</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-8-report-the-design-hierarchy">Step 8: report the design hierarchy<a class="anchor" aria-label="anchor" href="#step-8-report-the-design-hierarchy"></a>
+</h4>
+<p>A manuscript should state that temperature was applied at the
+whole-plot level, how whole plots were randomized, which mixture/process
+factors varied within whole plots, and which random term represented the
+restricted randomization.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--fractionation-and-split-plots-together">Part X. Fractionation and split plots together<a class="anchor" aria-label="anchor" href="#part-x--fractionation-and-split-plots-together"></a>
+</h2>
+<div class="section level3">
+<h3 id="do-not-fractionate-blindly-before-hierarchy-is-defined">21. Do not fractionate blindly before hierarchy is defined<a class="anchor" aria-label="anchor" href="#do-not-fractionate-blindly-before-hierarchy-is-defined"></a>
+</h3>
+<p>When a process factor is hard to change, the candidate design should
+respect the grouping before or during fractionation.</p>
+<p>Otherwise a nominally efficient fraction can be impossible to execute
+without breaking the intended whole-plot structure.</p>
+<p>Recommended sequence:</p>
+<ol style="list-style-type: decimal">
+<li>define mixture region;</li>
+<li>define process levels;</li>
+<li>identify hard-to-change factors;</li>
+<li>construct candidate combinations;</li>
+<li>impose feasible whole-plot organization;</li>
+<li>fractionate or optimize within the actual operational
+constraints;</li>
+<li>document randomization.</li>
+</ol>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--common-mistakes">Part XI. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xi--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="treating-process-factors-as-mixture-components">22. Treating process factors as mixture components<a class="anchor" aria-label="anchor" href="#treating-process-factors-as-mixture-components"></a>
+</h3>
+<p>They do not share the fixed-sum constraint.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-mixture-components-as-ordinary-process-factors">23. Treating mixture components as ordinary process factors<a class="anchor" aria-label="anchor" href="#treating-mixture-components-as-ordinary-process-factors"></a>
+</h3>
+<p>Their effects cannot be interpreted with all other components held
+constant.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="crossing-every-process-level-and-later-deleting-inconvenient-runs">24. Crossing every process level and later deleting inconvenient
+runs<a class="anchor" aria-label="anchor" href="#crossing-every-process-level-and-later-deleting-inconvenient-runs"></a>
+</h3>
+<p>Plan fractionation before response observation.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="reporting-a-fraction-without-the-protected-model">25. Reporting a fraction without the protected model<a class="anchor" aria-label="anchor" href="#reporting-a-fraction-without-the-protected-model"></a>
+</h3>
+<p>Fractionation is model-dependent.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="calling-a-blocked-design-orthogonal-without-checking-diagnostics">26. Calling a blocked design orthogonal without checking
+diagnostics<a class="anchor" aria-label="anchor" href="#calling-a-blocked-design-orthogonal-without-checking-diagnostics"></a>
+</h3>
+<p>Inspect <code>block_diagnostics</code>.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ignoring-whole-plots-in-analysis">27. Ignoring whole plots in analysis<a class="anchor" aria-label="anchor" href="#ignoring-whole-plots-in-analysis"></a>
+</h3>
+<p>Use the correct random structure.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="adding-a-random-effect-merely-because-lme4-is-available">28. Adding a random effect merely because <code>lme4</code> is
+available<a class="anchor" aria-label="anchor" href="#adding-a-random-effect-merely-because-lme4-is-available"></a>
+</h3>
+<p>Random effects should follow the experimental hierarchy.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="using-the-same-ternary-surface-for-every-process-setting">29. Using the same ternary surface for every process setting<a class="anchor" aria-label="anchor" href="#using-the-same-ternary-surface-for-every-process-setting"></a>
+</h3>
+<p>A mixture-process response surface changes with process conditions
+when interactions exist.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--function-selection-guide">Part XII. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xii--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Experimental feature</th>
+<th align="left">Function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Mixture + ordinary process factors</td>
+<td align="left"><code>mix_design(type="mixture_process")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Composition + total amount</td>
+<td align="left"><code>mix_design(type="mixture_amount")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Large process cross must be reduced</td>
+<td align="left"><code><a href="../reference/mix_fractionate_process.html">mix_fractionate_process()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Block allocation</td>
+<td align="left"><code><a href="../reference/mix_block_design.html">mix_block_design()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Two balanced process factors</td>
+<td align="left"><code><a href="../reference/mix_latin_process_design.html">mix_latin_process_design()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Hard-to-change process factor</td>
+<td align="left"><code>mix_design(type="split_plot")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Combined fixed model</td>
+<td align="left"><code><a href="../reference/mix_fit.html">mix_fit()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Whole-plot/random experimental unit</td>
+<td align="left"><code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Prediction at fixed process settings</td>
+<td align="left"><code><a href="../reference/mix_predict.html">mix_predict()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">General GLS/Bayesian response extensions</td>
+<td align="left">Extended Vignette 31</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--reporting-checklist">Part XIII. Reporting checklist<a class="anchor" aria-label="anchor" href="#part-xiii--reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">mixture components and
+constraints;</label></li>
+<li><label><input type="checkbox">process-variable names, units, and
+levels;</label></li>
+<li><label><input type="checkbox">base mixture design;</label></li>
+<li><label><input type="checkbox">process design/grid;</label></li>
+<li><label><input type="checkbox">whether the design was complete or
+fractionated;</label></li>
+<li><label><input type="checkbox">fractionation
+objective;</label></li>
+<li><label><input type="checkbox">protected model basis;</label></li>
+<li><label><input type="checkbox">random seed;</label></li>
+<li><label><input type="checkbox">blocking factors;</label></li>
+<li><label><input type="checkbox">block-allocation method and
+diagnostics;</label></li>
+<li><label><input type="checkbox">hard-to-change factors;</label></li>
+<li><label><input type="checkbox">whole-plot and subplot
+definitions;</label></li>
+<li><label><input type="checkbox">physical randomization
+protocol;</label></li>
+<li><label><input type="checkbox">combined mixture/process
+basis;</label></li>
+<li><label><input type="checkbox">mixture-process
+interactions;</label></li>
+<li><label><input type="checkbox">random-effects model if
+used;</label></li>
+<li><label><input type="checkbox">process settings used for reported
+surfaces/predictions;</label></li>
+<li><label><input type="checkbox">evidence that the final design was
+operationally executable.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--minimal-mixture-process-script">Appendix A. Minimal mixture-process script<a class="anchor" aria-label="anchor" href="#appendix-a--minimal-mixture-process-script"></a>
+</h2>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"mixture_process"</span>,</span>
+<span>  base_type <span class="op">=</span> <span class="st">"simplex_centroid"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    temperature <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">40</span><span class="op">)</span>,</span>
+<span>    time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260813</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">20260813</span><span class="op">)</span></span>
+<span><span class="va">mp</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span></span>
+<span>  <span class="va">mp</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="fl">4</span> <span class="op">*</span> <span class="va">A</span> <span class="op">+</span> <span class="fl">6</span> <span class="op">*</span> <span class="va">B</span> <span class="op">+</span> <span class="fl">5</span> <span class="op">*</span> <span class="va">C</span> <span class="op">+</span></span>
+<span>  <span class="fl">0.03</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">+</span></span>
+<span>  <span class="va">A</span> <span class="op">*</span> <span class="va">temperature</span> <span class="op">/</span> <span class="fl">20</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">mp</span><span class="op">$</span><span class="va">data</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">0.05</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"y"</span>,</span>
+<span>  <span class="va">mp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"temperature"</span>, <span class="st">"time"</span><span class="op">)</span>,</span>
+<span>  mixture_process <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_diagnose.html">mix_diagnose</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns experimental structure. It does not re-teach
+optimality criteria (25), alternative blending bases (26), multiresponse
+decision rules (28), optimum uncertainty (29), adaptive sequential BO
+(30), general response-engine theory (31), graphics (32), or
+validation/release engineering (33).</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>A mixture-process experiment has two simultaneous geometries:</p>
+<ul>
+<li>a constrained mixture geometry;</li>
+<li>an ordinary process-factor geometry.</li>
+</ul>
+<p>When hard-to-change factors are present, it also has an experimental
+hierarchy.</p>
+<p>The defensible sequence is:</p>
+<p><strong>mixture region -&gt; process region -&gt; operational
+constraints -&gt; combined design -&gt; fractionation/blocking if
+required -&gt; randomization -&gt; hierarchical model -&gt;
+process-conditioned interpretation.</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-structured-design-laboratories">Appendix C. Advanced structured-design laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-structured-design-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-quantify-design-explosion">C1. Laboratory: quantify design explosion<a class="anchor" aria-label="anchor" href="#c1--laboratory-quantify-design-explosion"></a>
+</h3>
+<p>Create a mixture-process design with a 10-point mixture design and
+three process factors having 3, 3, and 2 levels. Calculate the complete
+run count before generating the design. Then construct a 50%
+D-fraction.</p>
+<div class="section level4">
+<h4 id="questions">Questions<a class="anchor" aria-label="anchor" href="#questions"></a>
+</h4>
+<ul>
+<li>How many runs are saved?</li>
+<li>Which model terms are protected by the fractionation call?</li>
+<li>Would a random 50% fraction preserve the same information?</li>
+<li>Which process interactions are scientifically essential?</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-whole-plot-identification">C2. Laboratory: whole-plot identification<a class="anchor" aria-label="anchor" href="#c2--laboratory-whole-plot-identification"></a>
+</h3>
+<p>Construct a split-plot design with temperature as the hard-to-change
+factor. Tabulate <code>.whole_plot</code> by temperature and verify that
+the grouping matches the intended operational restriction.</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_lab</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Ds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_lab</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"split_plot"</span>,</span>
+<span>  process <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>temp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>,<span class="fl">40</span><span class="op">)</span>, volume <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>,<span class="fl">40</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  hard_to_change <span class="op">=</span> <span class="st">"temp"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">271001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">Ds</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">.whole_plot</span>, <span class="va">Ds</span><span class="op">$</span><span class="va">data</span><span class="op">$</span><span class="va">temp</span><span class="op">)</span></span></code></pre></div>
+<p>Explain what would be wrong with fitting a single-error OLS model if
+temperature is applied only at whole-plot level.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-block-balance-trade-off">C3. Laboratory: block-balance trade-off<a class="anchor" aria-label="anchor" href="#c3--laboratory-block-balance-trade-off"></a>
+</h3>
+<p>Generate block assignments with 2, 3, and 4 blocks. Compare
+<code>block_diagnostics</code> and discuss practical block sizes.</p>
+<p>The statistically best balance can still be operationally impossible
+if one block exceeds daily preparation capacity.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-process-conditioned-surfaces">C4. Laboratory: process-conditioned surfaces<a class="anchor" aria-label="anchor" href="#c4--laboratory-process-conditioned-surfaces"></a>
+</h3>
+<p>Fit a mixture-process model and generate predictions for the same
+ternary grid at two temperatures. Explain why two different ternary
+surfaces are required when mixture-temperature interactions exist.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--structured-experiment-troubleshooting-matrix">Appendix D. Structured-experiment troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--structured-experiment-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely issue</th>
+<th align="left">Response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">crossed design too large</td>
+<td align="left">many process combinations</td>
+<td align="left">fractionate with protected model</td>
+</tr>
+<tr class="even">
+<td align="left">fraction loses estimability</td>
+<td align="left">fraction too small/model too rich</td>
+<td align="left">increase fraction or simplify model</td>
+</tr>
+<tr class="odd">
+<td align="left">block diagnostic poor</td>
+<td align="left">incompatible block count/design</td>
+<td align="left">change block count or starting design</td>
+</tr>
+<tr class="even">
+<td align="left">hard-to-change factor switches too often</td>
+<td align="left">split-plot structure not imposed</td>
+<td align="left">define <code>hard_to_change</code> before
+randomization</td>
+</tr>
+<tr class="odd">
+<td align="left">mixed fit singular</td>
+<td align="left">weak whole-plot replication</td>
+<td align="left">inspect design hierarchy and variance information</td>
+</tr>
+<tr class="even">
+<td align="left">one process surface contradicts another</td>
+<td align="left">mixture-process interaction</td>
+<td align="left">report process-conditioned results</td>
+</tr>
+<tr class="odd">
+<td align="left">process variable accidentally sums with mixture</td>
+<td align="left">coding error</td>
+<td align="left">keep process columns outside <code>mix_spec</code>
+components</td>
+</tr>
+<tr class="even">
+<td align="left">run order impossible</td>
+<td align="left">algorithm ignored operational sequence</td>
+<td align="left">revise design before data collection</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-structured-design-exercises">Appendix E. Guided structured-design exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-structured-design-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--full-cross-size">Exercise 1. Full cross size<a class="anchor" aria-label="anchor" href="#exercise-1--full-cross-size"></a>
+</h4>
+<p>Calculate run counts for mixture designs of 7, 10, and 15 points
+crossed with 2×3, 3×3, and 3×3×2 process grids.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--fractionation-threshold">Exercise 2. Fractionation threshold<a class="anchor" aria-label="anchor" href="#exercise-2--fractionation-threshold"></a>
+</h4>
+<p>For a chosen model basis, reduce the design to 75%, 50%, and 35%.
+Identify when rank or conditioning becomes unacceptable.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--process-order">Exercise 3. Process order<a class="anchor" aria-label="anchor" href="#exercise-3--process-order"></a>
+</h4>
+<p>Compare <code>process_order = 1</code> and <code>2</code>. Explain
+which additional polynomial process terms appear and how the required
+design changes.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--mixture-process-interaction">Exercise 4. Mixture-process interaction<a class="anchor" aria-label="anchor" href="#exercise-4--mixture-process-interaction"></a>
+</h4>
+<p>Fit with <code>mixture_process = FALSE</code> and <code>TRUE</code>.
+Compare interpretation at two process settings.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--mixture-amount">Exercise 5. Mixture amount<a class="anchor" aria-label="anchor" href="#exercise-5--mixture-amount"></a>
+</h4>
+<p>Design an experiment in which formulation proportions vary together
+with total application dose. Explain why amount is not another mixture
+component.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--blocking">Exercise 6. Blocking<a class="anchor" aria-label="anchor" href="#exercise-6--blocking"></a>
+</h4>
+<p>Assign a design to three greenhouse benches. Describe when bench
+should be fixed versus random in the subsequent analysis.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--latin-process-layout">Exercise 7. Latin process layout<a class="anchor" aria-label="anchor" href="#exercise-7--latin-process-layout"></a>
+</h4>
+<p>Construct a temperature × time Latin-style arrangement and explain
+what balance it provides.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--hard-to-change-factor">Exercise 8. Hard-to-change factor<a class="anchor" aria-label="anchor" href="#exercise-8--hard-to-change-factor"></a>
+</h4>
+<p>Choose an agricultural process factor that is genuinely hard to
+change and justify whole-plot randomization.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--pseudoreplication">Exercise 9. Pseudoreplication<a class="anchor" aria-label="anchor" href="#exercise-9--pseudoreplication"></a>
+</h4>
+<p>Explain why multiple subplots within one whole plot do not provide
+independent replication for the hard-to-change factor.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--missing-run">Exercise 10. Missing run<a class="anchor" aria-label="anchor" href="#exercise-10--missing-run"></a>
+</h4>
+<p>Remove one subplot from a split-plot design. Discuss how imbalance
+affects the classical versus mixed-model analysis.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--process-slice-figure">Exercise 11. Process slice figure<a class="anchor" aria-label="anchor" href="#exercise-11--process-slice-figure"></a>
+</h4>
+<p>Specify two process settings and describe the figure captions needed
+to make the ternary surfaces comparable.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A paper reports “mixture and temperature effects were analyzed” but
+never states randomization. Draft the questions needed to determine
+whether a split-plot model was required.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-structured-design-audit">Appendix F. Reviewer-style structured-design audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-structured-design-audit"></a>
+</h2>
+<p>Verify that the study reports:</p>
+<ol style="list-style-type: decimal">
+<li>base mixture design;</li>
+<li>process factors and levels;</li>
+<li>complete versus fractionated cross;</li>
+<li>fractionation model and seed;</li>
+<li>blocks and their physical meaning;</li>
+<li>hard-to-change factors;</li>
+<li>whole-plot and subplot units;</li>
+<li>randomization sequence;</li>
+<li>model basis for mixture and process terms;</li>
+<li>mixture-process interactions;</li>
+<li>random-effect structure;</li>
+<li>process settings used for interpretation.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="mixture-process-interaction">Mixture-process interaction<a class="anchor" aria-label="anchor" href="#mixture-process-interaction"></a>
+</h4>
+<blockquote>
+<p>The effect of composition depended on processing temperature;
+therefore mixture response surfaces were interpreted at fixed
+temperature settings rather than collapsed into a single ternary
+surface.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="fractionated-design">Fractionated design<a class="anchor" aria-label="anchor" href="#fractionated-design"></a>
+</h4>
+<blockquote>
+<p>The complete mixture-process candidate set was reduced to the stated
+fraction using a D-information criterion that protected the declared
+quadratic mixture and second-order process basis.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="blocking">Blocking<a class="anchor" aria-label="anchor" href="#blocking"></a>
+</h4>
+<blockquote>
+<p>Runs were allocated to blocks before response observation. Block
+quality was assessed numerically from model-column imbalance and the
+final allocation was retained for the analysis.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="split-plot">Split plot<a class="anchor" aria-label="anchor" href="#split-plot"></a>
+</h4>
+<blockquote>
+<p>Temperature was hard to change and therefore applied at the
+whole-plot level. Mixture/process settings within each whole plot formed
+subplots, and the analysis included a whole-plot random effect
+consistent with the restricted randomization.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-structured-experiment-case-bank">Appendix H. Applied structured-experiment case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-structured-experiment-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--fertilizer-granulation-temperature">H1. Fertilizer granulation temperature<a class="anchor" aria-label="anchor" href="#h1--fertilizer-granulation-temperature"></a>
+</h3>
+<p>A three-component fertilizer blend is manufactured at two granulation
+temperatures. Composition is a mixture, temperature is a process factor.
+If temperature can be changed every run, a full or fractionated
+mixture-process design may be randomized freely. If the plant requires
+long thermal equilibration, temperature may become hard to change and a
+split-plot design is more realistic. The design should follow operations
+rather than forcing operations to fit an analytically convenient
+randomization.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--spray-formulation-and-application-volume">H2. Spray formulation and application volume<a class="anchor" aria-label="anchor" href="#h2--spray-formulation-and-application-volume"></a>
+</h3>
+<p>A pesticide mixture is applied at 20, 30, and 40 L/ha. Mixture ×
+spray-volume interaction is scientifically plausible because droplet
+behavior can change formulation efficacy. Interpretation should
+therefore use response surfaces at fixed spray volumes. Collapsing all
+volumes into one ternary surface could hide an interaction and produce a
+misleading recommendation.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--greenhouse-bench-blocks">H3. Greenhouse bench blocks<a class="anchor" aria-label="anchor" href="#h3--greenhouse-bench-blocks"></a>
+</h3>
+<p>A substrate mixture experiment spans several benches with known
+environmental gradients. Runs are allocated to benches before responses
+are observed. <code><a href="../reference/mix_block_design.html">mix_block_design()</a></code> can reduce model-column
+imbalance, but the final analysis must still represent the bench
+structure appropriately. A block label in the dataset is not enough if
+the statistical model ignores it.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--mixture-amount-foliar-dose">H4. Mixture-amount foliar dose<a class="anchor" aria-label="anchor" href="#h4--mixture-amount-foliar-dose"></a>
+</h3>
+<p>A biostimulant formulation varies in composition and total
+application dose. The amount dimension is not another composition
+component because increasing total dose does not force one mixture
+fraction to decrease. A mixture-amount design explicitly separates these
+two scales and supports questions about whether an optimal composition
+changes with total dose.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--fractionated-process-experiment-under-budget">H5. Fractionated process experiment under budget<a class="anchor" aria-label="anchor" href="#h5--fractionated-process-experiment-under-budget"></a>
+</h3>
+<p>A full 3×3 process grid crossed with a mixture design exceeds the
+budget. D-information fractionation protects the intended model basis
+better than arbitrary deletion. The fraction, model terms, seed, and
+final design diagnostics must be reported. If an important interaction
+is not protected by the fractionation basis, the later absence of
+evidence for that interaction is difficult to interpret.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-structured-design-review">Appendix I. Short-answer structured-design review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-structured-design-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>What distinguishes a process variable from a mixture
+component?</strong> It does not participate in the fixed-sum
+constraint.</li>
+<li>
+<strong>What creates a split plot?</strong> Restricted randomization
+due to hard-to-change factors.</li>
+<li>
+<strong>Why are subplots not replicates for the whole-plot
+factor?</strong> They share one whole-plot experimental unit.</li>
+<li>
+<strong>What should fractionation protect?</strong> The model terms
+needed for the scientific question.</li>
+<li>
+<strong>What is mixture amount?</strong> Total quantity varying
+independently of composition proportions.</li>
+<li>
+<strong>What does blocking solve?</strong> Nuisance
+heterogeneity/randomization organization, not mixture geometry.</li>
+<li>
+<strong>What should be inspected after
+<code><a href="../reference/mix_block_design.html">mix_block_design()</a></code>?</strong> Numerical block
+diagnostics.</li>
+<li>
+<strong>When can one ternary surface be misleading?</strong> When
+mixture-process interactions make the surface process-dependent.</li>
+<li>
+<strong>Which function links design hierarchy to analysis?</strong>
+<code><a href="../reference/mix_fit_mixed.html">mix_fit_mixed()</a></code> when random effects are appropriate.</li>
+<li>
+<strong>What must a reproducible process experiment report?</strong>
+Process levels, randomization, fractionation, blocks, hard-to-change
+factors, and model interactions.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-randomization-and-process-structure">Appendix J. Deeper conceptual notes on randomization and process
+structure<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-randomization-and-process-structure"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--the-experimental-unit-determines-the-error-information">J1. The experimental unit determines the error information<a class="anchor" aria-label="anchor" href="#j1--the-experimental-unit-determines-the-error-information"></a>
+</h3>
+<p>A process factor applied to a chamber, batch, or whole plot has fewer
+independent experimental units than a factor applied separately to every
+subplot. No amount of statistical sophistication can create replication
+that was not physically randomized. This is why the design must record
+the whole-plot identifier before analysis. The later random effect is a
+representation of real experimental hierarchy, not a mathematical
+trick.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--process-interactions-multiply-interpretation-burden">J2. Process interactions multiply interpretation burden<a class="anchor" aria-label="anchor" href="#j2--process-interactions-multiply-interpretation-burden"></a>
+</h3>
+<p>With two process variables and three mixture components, a rich
+combined model can contain many interaction terms. The experimental
+design must support those terms, and the scientific report must
+interpret them through slices or contrasts. Adding every possible
+interaction by default can produce a model that is technically estimable
+but nearly impossible to explain. Pre-specify interactions with strong
+mechanistic or operational relevance whenever possible.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--fractionation-changes-what-can-be-learned">J3. Fractionation changes what can be learned<a class="anchor" aria-label="anchor" href="#j3--fractionation-changes-what-can-be-learned"></a>
+</h3>
+<p>Fractionation is not simply a smaller version of the complete
+experiment. The retained subset defines which effects remain
+distinguishable. A model-based fraction should be evaluated for rank,
+prediction variance, and aliasing after selection. If a process
+interaction becomes nearly aliased, the later absence of statistical
+significance is weak evidence that the interaction is biologically
+absent.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--randomization-versus-convenience">J4. Randomization versus convenience<a class="anchor" aria-label="anchor" href="#j4--randomization-versus-convenience"></a>
+</h3>
+<p>Operational convenience can legitimately motivate restricted
+randomization, but the restriction must be represented in analysis. For
+example, grouping all high-temperature runs together may reduce setup
+cost but creates a whole-plot structure and potential temporal
+confounding. A defensible protocol randomizes whole plots, randomizes
+subplots within whole plots, records execution order, and includes the
+corresponding hierarchical model.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--reporting-process-conditioned-conclusions">J5. Reporting process-conditioned conclusions<a class="anchor" aria-label="anchor" href="#j5--reporting-process-conditioned-conclusions"></a>
+</h3>
+<p>When mixture-process interactions are present, conclusions should be
+conditional. Instead of “the optimal mixture was A/B/C,” write “at 30
+degrees C and spray volume 30, the fitted response favored region X; at
+40 degrees C the preferred region shifted toward Y.” This prevents
+process conditions from disappearing from the scientific
+recommendation.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

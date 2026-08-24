@@ -60,8 +60,1394 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-publication-graphics-and-interactive-visualization-for-mixture-experiments">mixRSMflow: Publication Graphics and Interactive Visualization for
+Mixture Experiments<a class="anchor" aria-label="anchor" href="#mixrsmflow-publication-graphics-and-interactive-visualization-for-mixture-experiments"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 32<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> scientific visualization, ternary
+design and response maps, prediction-variance maps, diagnostics,
+FDS/VDG, optimum and uncertainty graphics, vector dual-view 3D surfaces,
+high-resolution raster output, optional Plotly interaction, and
+figure-reporting standards<br><strong>Companion material:</strong>
+<code>15-static-graphics.Rmd</code>,
+<code>16-interactive-graphics.Rmd</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. The
+statistical quantities displayed by a figure should be generated from
+validated numeric objects. A beautiful graphic is not a substitute for
+an adequate design or model.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-graphics-deserve-their-own-scientific-workflow">1. Why graphics deserve their own scientific workflow<a class="anchor" aria-label="anchor" href="#why-graphics-deserve-their-own-scientific-workflow"></a>
+</h3>
+<p>Mixture experiments are geometric. A coefficient table alone rarely
+communicates where the experiment was conducted, which parts of the
+simplex are feasible, where the response surface rises or falls, or how
+uncertain predictions are near the boundaries.</p>
+<p>At the same time, mixture graphics are easy to misuse. A smooth
+colored triangle can visually imply information in regions that were
+never observed, and a 3D surface can exaggerate small curvature through
+perspective.</p>
+<p>The central principle is:</p>
+<p><strong>Use graphics to expose design support, model shape,
+uncertainty, and decision geometry—not to hide them.</strong></p>
+<p><code><a href="../reference/mix_plot.html">mix_plot()</a></code> provides a common plotting interface across
+major <code>mixRSMflow</code> objects.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>choose a plot type according to the scientific object being
+communicated;</li>
+<li>produce ternary design plots for three-component systems;</li>
+<li>display response contours and filled response surfaces;</li>
+<li>distinguish a response heat map from a prediction-variance map;</li>
+<li>create component-effect and diagnostic figures;</li>
+<li>create FDS and VDG design-quality graphics;</li>
+<li>display exact optima, near-optimal regions, and joint optimum
+uncertainty;</li>
+<li>produce multiresponse desirability and Pareto displays;</li>
+<li>create a recalculated dual-view 3D mixture surface with vector
+PDF/SVG output;</li>
+<li>create 600-dpi PNG/TIFF output when raster files are required;</li>
+<li>use optional Plotly 3D interaction for exploration and
+teaching;</li>
+<li>preserve numeric prediction data independently of browser
+widgets;</li>
+<li>select dimensions and labels suitable for journals, theses, slides,
+and teaching;</li>
+<li>show observed design points whenever they improve
+interpretation;</li>
+<li>avoid misleading interpolation or visual extrapolation;</li>
+<li>build a complete graphical suite for one mixture analysis.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Graphic family</th>
+<th align="left">
+<code><a href="../reference/mix_plot.html">mix_plot()</a></code> use</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Design support</td>
+<td align="left"><code>type="design"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Ternary contours</td>
+<td align="left"><code>type="ternary_contour"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Filled ternary surface</td>
+<td align="left"><code>type="ternary_filled"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Heat-map style surface</td>
+<td align="left"><code>type="heatmap"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Vector/perspective surface</td>
+<td align="left"><code>type="surface3d"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Prediction uncertainty</td>
+<td align="left"><code>type="prediction_variance"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Residuals</td>
+<td align="left"><code>type="residuals"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Q-Q</td>
+<td align="left"><code>type="qq"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Leverage/influence</td>
+<td align="left"><code>type="leverage"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Component effect</td>
+<td align="left"><code>mix_plot(mix_effects(...))</code></td>
+</tr>
+<tr class="odd">
+<td align="left">FDS</td>
+<td align="left"><code>type="fds"</code></td>
+</tr>
+<tr class="even">
+<td align="left">VDG</td>
+<td align="left"><code>type="vdg"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Optimum</td>
+<td align="left"><code>type="optimum"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Optimum uncertainty</td>
+<td align="left"><code>type="optimum_ci"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Multiresponse compromise</td>
+<td align="left"><code>type="desirability"</code></td>
+</tr>
+<tr class="even">
+<td align="left">Pareto front</td>
+<td align="left"><code>type="pareto"</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Interactive</td>
+<td align="left">
+<code>engine="plotly"</code> where supported</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--build-a-common-teaching-object">Part I. Build a common teaching object<a class="anchor" aria-label="anchor" href="#part-i--build-a-common-teaching-object"></a>
+</h2>
+<div class="section level3">
+<h3 id="fit-a-response-surface">4. Fit a response surface<a class="anchor" aria-label="anchor" href="#fit-a-response-surface"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">32001</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span></span>
+<span>  <span class="st">"response"</span>,</span>
+<span>  <span class="va">d</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Also create a design evaluation and optimum:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"simplex_lattice"</span>,</span>
+<span>  degree <span class="op">=</span> <span class="fl">3</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">E</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">des</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"maximize"</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">32002</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>These objects will support the graphic families below.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--design-graphics">Part II. Design graphics<a class="anchor" aria-label="anchor" href="#part-ii--design-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="ternary-design-plot">5. Ternary design plot<a class="anchor" aria-label="anchor" href="#ternary-design-plot"></a>
+</h3>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">des</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"design"</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"ggplot2"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A design plot should answer:</p>
+<ul>
+<li>Which formulations are tested?</li>
+<li>Are vertices represented?</li>
+<li>Are edges represented?</li>
+<li>Is the interior represented?</li>
+<li>Are replicates distinguishable if needed?</li>
+<li>Is the feasible subregion visible for constrained designs?</li>
+</ul>
+<div class="section level4">
+<h4 id="publication-advice">Publication advice<a class="anchor" aria-label="anchor" href="#publication-advice"></a>
+</h4>
+<p>Use clear component labels and avoid unnecessary decorative
+backgrounds. For a constrained region, do not let the full triangle
+visually imply that the entire simplex is admissible.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="extreme-vertices-region-plot">6. Extreme-vertices region plot<a class="anchor" aria-label="anchor" href="#extreme-vertices-region-plot"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">D_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_c</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">D_c</span>, <span class="st">"design"</span><span class="op">)</span></span></code></pre></div>
+<p>The outer ternary frame is a coordinate system. The scientific region
+is the constrained polygon inside it.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--ternary-response-surfaces">Part III. Ternary response surfaces<a class="anchor" aria-label="anchor" href="#part-iii--ternary-response-surfaces"></a>
+</h2>
+<div class="section level3">
+<h3 id="contour-lines">7. Contour lines<a class="anchor" aria-label="anchor" href="#contour-lines"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"ternary_contour"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Contours are effective for reading response values because
+equal-response curves can be followed directly.</p>
+<div class="section level4">
+<h4 id="good-use">Good use<a class="anchor" aria-label="anchor" href="#good-use"></a>
+</h4>
+<ul>
+<li>locate high/low response regions;</li>
+<li>show saddle-like behavior;</li>
+<li>compare model slices;</li>
+<li>overlay design support.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="filled-contours">8. Filled contours<a class="anchor" aria-label="anchor" href="#filled-contours"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"ternary_filled"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Filled contours improve pattern recognition but require a clearly
+labeled response scale.</p>
+<p>Avoid a palette that implies sharp categorical boundaries in a
+continuous response unless the bins themselves have scientific
+meaning.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="heat-map-style-display">9. Heat-map style display<a class="anchor" aria-label="anchor" href="#heat-map-style-display"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"heatmap"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use heat-map displays for dense teaching or dashboard contexts, but
+preserve the simplex geometry and numeric legend.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--prediction-uncertainty-graphics">Part IV. Prediction uncertainty graphics<a class="anchor" aria-label="anchor" href="#part-iv--prediction-uncertainty-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="prediction-variance-map">10. Prediction-variance map<a class="anchor" aria-label="anchor" href="#prediction-variance-map"></a>
+</h3>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"prediction_variance"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A response surface answers <strong>what the model predicts</strong>.
+A prediction-variance surface answers <strong>where the model is well or
+poorly supported</strong>.</p>
+<p>Display them as separate figures when uncertainty is important.</p>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>A region with a high predicted response and high prediction variance
+is not equivalent to a high-response region with low uncertainty.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="design-evaluation-prediction-variance">11. Design-evaluation prediction variance<a class="anchor" aria-label="anchor" href="#design-evaluation-prediction-variance"></a>
+</h3>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">E</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"prediction_variance"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This view is especially useful before data collection because it
+evaluates design information without observed outcomes.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--diagnostic-graphics">Part V. Diagnostic graphics<a class="anchor" aria-label="anchor" href="#part-v--diagnostic-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="residuals-versus-fitted">12. Residuals versus fitted<a class="anchor" aria-label="anchor" href="#residuals-versus-fitted"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"residuals"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Look for:</p>
+<ul>
+<li>curvature not represented by the model;</li>
+<li>funnel-shaped variability;</li>
+<li>isolated large residuals;</li>
+<li>response-dependent variance.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="normal-q-q-plot">13. Normal Q-Q plot<a class="anchor" aria-label="anchor" href="#normal-q-q-plot"></a>
+</h3>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"qq"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>For Gaussian models, use the Q-Q plot as one diagnostic among
+several. Small samples can make tails difficult to judge.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="leverage-view">14. Leverage view<a class="anchor" aria-label="anchor" href="#leverage-view"></a>
+</h3>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"leverage"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>High-leverage points in mixture designs often occur at boundaries.
+They may be expected, but their influence should be understood.</p>
+<p>A leverage plot should not become an automatic outlier-deletion
+tool.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--component-effect-graphics">Part VI. Component-effect graphics<a class="anchor" aria-label="anchor" href="#part-vi--component-effect-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="cox-trace">15. Cox trace<a class="anchor" aria-label="anchor" href="#cox-trace"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">eff</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_effects.html">mix_effects</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"cox"</span>,</span>
+<span>  component <span class="op">=</span> <span class="st">"A"</span>,</span>
+<span>  n <span class="op">=</span> <span class="fl">51</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">eff</span><span class="op">)</span></span></code></pre></div>
+<p>The figure must identify the path rule used to change the other
+components. Otherwise the phrase “effect of A” is ambiguous in a
+mixture.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="substitution-path">16. Substitution path<a class="anchor" aria-label="anchor" href="#substitution-path"></a>
+</h3>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sub</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_effects.html">mix_effects</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"substitution"</span>,</span>
+<span>  from_component <span class="op">=</span> <span class="st">"A"</span>,</span>
+<span>  to_component <span class="op">=</span> <span class="st">"B"</span>,</span>
+<span>  n <span class="op">=</span> <span class="fl">51</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">sub</span><span class="op">)</span></span></code></pre></div>
+<p>This is often more interpretable for applied scientists because it
+corresponds to replacing one ingredient with another.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--design-quality-graphics">Part VII. Design-quality graphics<a class="anchor" aria-label="anchor" href="#part-vii--design-quality-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="fds">17. FDS<a class="anchor" aria-label="anchor" href="#fds"></a>
+</h3>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E</span>, <span class="st">"fds"</span><span class="op">)</span></span></code></pre></div>
+<p>When comparing designs, use the same variance scaling and evaluation
+region.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="vdg">18. VDG<a class="anchor" aria-label="anchor" href="#vdg"></a>
+</h3>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E</span>, <span class="st">"vdg"</span><span class="op">)</span></span></code></pre></div>
+<p>VDG is most meaningful when the radial coordinate has a clear
+interpretation in the independent-coordinate system.</p>
+<p>The full design theory belongs to Extended Vignette 25; here the
+emphasis is how to communicate the result.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--optimum-graphics">Part VIII. Optimum graphics<a class="anchor" aria-label="anchor" href="#part-viii--optimum-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="exact-and-near-optimal-region">19. Exact and near-optimal region<a class="anchor" aria-label="anchor" href="#exact-and-near-optimal-region"></a>
+</h3>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">op</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"optimum"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A good optimum plot distinguishes:</p>
+<ul>
+<li>exact fitted optimum;</li>
+<li>near-optimal cloud/region;</li>
+<li>feasible boundary;</li>
+<li>response contours.</li>
+</ul>
+<p>Do not use a star symbol for the optimum without explaining whether
+it is the exact fitted maximum or a selected practical formulation.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="optimum-uncertainty-cloud">20. Optimum uncertainty cloud<a class="anchor" aria-label="anchor" href="#optimum-uncertainty-cloud"></a>
+</h3>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ci</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span></span>
+<span>  <span class="va">op</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"parametric"</span>,</span>
+<span>  B <span class="op">=</span> <span class="fl">500</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">32101</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">ci</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"optimum_ci"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The cloud shows joint location uncertainty. Do not replace it with
+three independent error bars for A, B, and C.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--multiresponse-graphics">Part IX. Multiresponse graphics<a class="anchor" aria-label="anchor" href="#part-ix--multiresponse-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="desirability-surface">21. Desirability surface<a class="anchor" aria-label="anchor" href="#desirability-surface"></a>
+</h3>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">md</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"multiresponse"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">32201</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_multi_fit.html">mix_multi_fit</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"quality"</span>, <span class="st">"cost"</span>, <span class="st">"stability"</span><span class="op">)</span>,</span>
+<span>  <span class="va">md</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">goals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  quality <span class="op">=</span> <span class="st">"maximize"</span>,</span>
+<span>  cost <span class="op">=</span> <span class="st">"minimize"</span>,</span>
+<span>  stability <span class="op">=</span> <span class="st">"maximize"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">settings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  quality <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>low <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">quality</span><span class="op">)</span>, high <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">quality</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  cost <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>low <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">cost</span><span class="op">)</span>, high <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">cost</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  stability <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>low <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">stability</span><span class="op">)</span>, high <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">md</span><span class="op">$</span><span class="va">stability</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mo</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_multiopt.html">mix_multiopt</a></span><span class="op">(</span></span>
+<span>  <span class="va">mf</span>,</span>
+<span>  <span class="va">goals</span>,</span>
+<span>  <span class="va">settings</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">32202</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">mo</span>, <span class="st">"desirability"</span><span class="op">)</span></span></code></pre></div>
+<p>The figure is interpretable only when the desirability settings are
+reported.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="pareto-plot">22. Pareto plot<a class="anchor" aria-label="anchor" href="#pareto-plot"></a>
+</h3>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">mo</span>, <span class="st">"pareto"</span><span class="op">)</span></span></code></pre></div>
+<p>Label the response axes with units and objective direction.</p>
+<p>A Pareto graphic should communicate trade-offs, not imply that every
+nondominated point is equally desirable.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--cornell-style-dual-view-3d-surface">Part X. Cornell-style dual-view 3D surface<a class="anchor" aria-label="anchor" href="#part-x--cornell-style-dual-view-3d-surface"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-reconstruct-this-historical-figure-type">23. Why reconstruct this historical figure type?<a class="anchor" aria-label="anchor" href="#why-reconstruct-this-historical-figure-type"></a>
+</h3>
+<p>Three-dimensional wireframe surfaces remain pedagogically valuable
+because they show the shape of a three-component response surface above
+the simplex.</p>
+<p><code>mixRSMflow</code> generates a <strong>recalculated scientific
+analogue</strong> of the dual-view 3D mixture surface style historically
+used in classical mixture literature. It does not embed scanned textbook
+artwork.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="vector-pdf">24. Vector PDF<a class="anchor" aria-label="anchor" href="#vector-pdf"></a>
+</h3>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"surface3d"</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"base"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">35</span>,</span>
+<span>  views <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"mixture_surface_dual_view.pdf"</span>,</span>
+<span>  width <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  height <span class="op">=</span> <span class="fl">7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="why-pdf">Why PDF?<a class="anchor" aria-label="anchor" href="#why-pdf"></a>
+</h4>
+<p>For line-based scientific surfaces, vector PDF preserves geometric
+lines and text without raster pixelation.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="vector-svg">25. Vector SVG<a class="anchor" aria-label="anchor" href="#vector-svg"></a>
+</h3>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"surface3d"</span>,</span>
+<span>  engine <span class="op">=</span> <span class="st">"base"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">35</span>,</span>
+<span>  views <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"mixture_surface_dual_view.svg"</span>,</span>
+<span>  width <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  height <span class="op">=</span> <span class="fl">7</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>SVG is useful for vector editing and web publication.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="what-to-inspect-in-the-3d-output">26. What to inspect in the 3D output<a class="anchor" aria-label="anchor" href="#what-to-inspect-in-the-3d-output"></a>
+</h3>
+<ul>
+<li>both perspectives show the same surface;</li>
+<li>component labels are correct;</li>
+<li>surface boundary lies over the simplex;</li>
+<li>no disconnected mesh lines appear;</li>
+<li>high and low regions agree with the ternary contour;</li>
+<li>perspective does not reverse component orientation;</li>
+<li>response axis is labeled with units;</li>
+<li>the figure remains legible in grayscale if required.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--high-resolution-raster-output">Part XI. High-resolution raster output<a class="anchor" aria-label="anchor" href="#part-xi--high-resolution-raster-output"></a>
+</h2>
+<div class="section level3">
+<h3 id="tiff-at-600-dpi">27. TIFF at 600 dpi<a class="anchor" aria-label="anchor" href="#tiff-at-600-dpi"></a>
+</h3>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"ternary_contour"</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"ternary_contour_600dpi.tiff"</span>,</span>
+<span>  width <span class="op">=</span> <span class="fl">7</span>,</span>
+<span>  height <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  dpi <span class="op">=</span> <span class="fl">600</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="png">PNG<a class="anchor" aria-label="anchor" href="#png"></a>
+</h4>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"ternary_filled"</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"ternary_filled_600dpi.png"</span>,</span>
+<span>  width <span class="op">=</span> <span class="fl">7</span>,</span>
+<span>  height <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  dpi <span class="op">=</span> <span class="fl">600</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="raster-rule">Raster rule<a class="anchor" aria-label="anchor" href="#raster-rule"></a>
+</h4>
+<p>High dpi does not repair a poorly designed figure. Set physical
+dimensions, font sizes, line widths, and labels for the target
+publication size first.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--interactive-plotly-graphics">Part XII. Interactive Plotly graphics<a class="anchor" aria-label="anchor" href="#part-xii--interactive-plotly-graphics"></a>
+</h2>
+<div class="section level3">
+<h3 id="interactive-surface">28. Interactive surface<a class="anchor" aria-label="anchor" href="#interactive-surface"></a>
+</h3>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"plotly"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>    <span class="va">fit</span>,</span>
+<span>    type <span class="op">=</span> <span class="st">"surface3d"</span>,</span>
+<span>    engine <span class="op">=</span> <span class="st">"plotly"</span>,</span>
+<span>    resolution <span class="op">=</span> <span class="fl">30</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Useful interactions include:</p>
+<ul>
+<li>rotate;</li>
+<li>zoom;</li>
+<li>inspect exact mixture coordinates;</li>
+<li>inspect predicted response;</li>
+<li>teach simplex orientation.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="interactive-design">29. Interactive design<a class="anchor" aria-label="anchor" href="#interactive-design"></a>
+</h3>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"plotly"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>    <span class="va">des</span>,</span>
+<span>    type <span class="op">=</span> <span class="st">"design"</span>,</span>
+<span>    engine <span class="op">=</span> <span class="st">"plotly"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Interactive graphics are supplementary. Preserve the underlying
+numeric design and predictions as ordinary R objects.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--a-complete-publication-figure-suite">Part XIII. A complete publication figure suite<a class="anchor" aria-label="anchor" href="#part-xiii--a-complete-publication-figure-suite"></a>
+</h2>
+<div class="section level3">
+<h3 id="recommended-five-figure-set-for-a-three-component-analysis">30. Recommended five-figure set for a three-component analysis<a class="anchor" aria-label="anchor" href="#recommended-five-figure-set-for-a-three-component-analysis"></a>
+</h3>
+<p>For a scientific manuscript, a compact figure set could include:</p>
+<ol style="list-style-type: decimal">
+<li>experimental design and feasible region;</li>
+<li>fitted ternary response contour with observed design points;</li>
+<li>diagnostics panel or residual plot;</li>
+<li>prediction-variance map or uncertainty figure;</li>
+<li>optimum + near-optimal/uncertainty region.</li>
+</ol>
+<p>The 3D surface can be used as a supplementary or pedagogical figure
+when it adds genuine understanding beyond the contour map.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="example-export-workflow">31. Example export workflow<a class="anchor" aria-label="anchor" href="#example-export-workflow"></a>
+</h3>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fig_dir</span> <span class="op">&lt;-</span> <span class="st">"figures"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">fig_dir</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">des</span>,</span>
+<span>  <span class="st">"design"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">fig_dir</span>, <span class="st">"Figure_1_design.pdf"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"ternary_contour"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">fig_dir</span>, <span class="st">"Figure_2_response.pdf"</span><span class="op">)</span>,</span>
+<span>  width <span class="op">=</span> <span class="fl">7</span>,</span>
+<span>  height <span class="op">=</span> <span class="fl">6</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"residuals"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">fig_dir</span>, <span class="st">"Figure_3_residuals.pdf"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="st">"prediction_variance"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">fig_dir</span>, <span class="st">"Figure_4_prediction_variance.pdf"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">ci</span>,</span>
+<span>  <span class="st">"optimum_ci"</span>,</span>
+<span>  file <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">fig_dir</span>, <span class="st">"Figure_5_optimum_uncertainty.pdf"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiv--accessibility-and-scientific-honesty">Part XIV. Accessibility and scientific honesty<a class="anchor" aria-label="anchor" href="#part-xiv--accessibility-and-scientific-honesty"></a>
+</h2>
+<div class="section level3">
+<h3 id="color">32. Color<a class="anchor" aria-label="anchor" href="#color"></a>
+</h3>
+<p>Use color to support interpretation, not as the only encoding.</p>
+<p>Good practice:</p>
+<ul>
+<li>colorblind-accessible palettes;</li>
+<li>labeled contour lines when precise values matter;</li>
+<li>adequate contrast;</li>
+<li>grayscale checking if the journal may print figures without
+color.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="observed-data">33. Observed data<a class="anchor" aria-label="anchor" href="#observed-data"></a>
+</h3>
+<p>Whenever possible, show design points on or beside fitted
+surfaces.</p>
+<p>This helps readers distinguish:</p>
+<ul>
+<li>interpolation supported by observations;</li>
+<li>large gaps in the design;</li>
+<li>boundary extrapolation.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="uncertainty">34. Uncertainty<a class="anchor" aria-label="anchor" href="#uncertainty"></a>
+</h3>
+<p>Do not present only the smooth fitted surface if uncertainty is
+scientifically consequential.</p>
+<p>Possible complementary views:</p>
+<ul>
+<li>prediction-variance map;</li>
+<li>confidence bands on effect traces;</li>
+<li>optimum cloud;</li>
+<li>near-optimal region.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="axes-and-labels">35. Axes and labels<a class="anchor" aria-label="anchor" href="#axes-and-labels"></a>
+</h3>
+<p>Use real component names and units. <code>A</code>, <code>B</code>,
+and <code>C</code> are appropriate for teaching but insufficient for a
+publication figure unless defined prominently.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xv--common-mistakes">Part XV. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xv--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="cropping-away-component-labels">36. Cropping away component labels<a class="anchor" aria-label="anchor" href="#cropping-away-component-labels"></a>
+</h3>
+<p>Check the exported file, not only the RStudio preview.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="showing-predictions-over-impossible-compositions">37. Showing predictions over impossible compositions<a class="anchor" aria-label="anchor" href="#showing-predictions-over-impossible-compositions"></a>
+</h3>
+<p>Respect the feasible region.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="using-3d-perspective-to-exaggerate-small-differences">38. Using 3D perspective to exaggerate small differences<a class="anchor" aria-label="anchor" href="#using-3d-perspective-to-exaggerate-small-differences"></a>
+</h3>
+<p>Pair with a contour map and numeric scale.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="hiding-design-points">39. Hiding design points<a class="anchor" aria-label="anchor" href="#hiding-design-points"></a>
+</h3>
+<p>Show them where possible.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="using-only-interactive-graphics-in-a-reproducible-report">40. Using only interactive graphics in a reproducible report<a class="anchor" aria-label="anchor" href="#using-only-interactive-graphics-in-a-reproducible-report"></a>
+</h3>
+<p>Archive static figures and numeric objects.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="interpreting-color-bins-as-statistical-classes">41. Interpreting color bins as statistical classes<a class="anchor" aria-label="anchor" href="#interpreting-color-bins-as-statistical-classes"></a>
+</h3>
+<p>They are graphical intervals unless formally defined otherwise.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xvi--function-selection-guide">Part XVI. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xvi--function-selection-guide"></a>
+</h2>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Communication goal</th>
+<th align="left">Plot</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Where were blends tested?</td>
+<td align="left">design</td>
+</tr>
+<tr class="even">
+<td align="left">What does the fitted surface look like?</td>
+<td align="left">ternary contour/filled</td>
+</tr>
+<tr class="odd">
+<td align="left">Where is uncertainty high?</td>
+<td align="left">prediction variance</td>
+</tr>
+<tr class="even">
+<td align="left">Is model residual behavior acceptable?</td>
+<td align="left">residuals/QQ/leverage</td>
+</tr>
+<tr class="odd">
+<td align="left">How does a component change along a path?</td>
+<td align="left">effect object plot</td>
+</tr>
+<tr class="even">
+<td align="left">How good is the design globally?</td>
+<td align="left">FDS/VDG</td>
+</tr>
+<tr class="odd">
+<td align="left">Where is the best fitted blend?</td>
+<td align="left">optimum</td>
+</tr>
+<tr class="even">
+<td align="left">How uncertain is optimum location?</td>
+<td align="left">optimum_ci</td>
+</tr>
+<tr class="odd">
+<td align="left">How do multiresponse goals trade off?</td>
+<td align="left">desirability/Pareto</td>
+</tr>
+<tr class="even">
+<td align="left">Teaching curvature in 3D</td>
+<td align="left">surface3d</td>
+</tr>
+<tr class="odd">
+<td align="left">Exploration/hover/rotation</td>
+<td align="left">Plotly engine</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xvii--figure-reporting-checklist">Part XVII. Figure reporting checklist<a class="anchor" aria-label="anchor" href="#part-xvii--figure-reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">figure number and descriptive
+caption;</label></li>
+<li><label><input type="checkbox">real component names;</label></li>
+<li><label><input type="checkbox">units;</label></li>
+<li><label><input type="checkbox">mixture region
+identified;</label></li>
+<li><label><input type="checkbox">observed design points where
+helpful;</label></li>
+<li><label><input type="checkbox">model used to create fitted
+surface;</label></li>
+<li><label><input type="checkbox">process settings for mixture-process
+slices;</label></li>
+<li><label><input type="checkbox">uncertainty definition;</label></li>
+<li><label><input type="checkbox">color scale label;</label></li>
+<li><label><input type="checkbox">vector format when
+appropriate;</label></li>
+<li><label><input type="checkbox">raster dpi and physical dimensions
+if raster;</label></li>
+<li><label><input type="checkbox">no clipping;</label></li>
+<li><label><input type="checkbox">accessible colors;</label></li>
+<li><label><input type="checkbox">consistency between 3D and contour
+views;</label></li>
+<li><label><input type="checkbox">static archive for any interactive
+graphic;</label></li>
+<li><label><input type="checkbox">reproducible code and package
+version.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--compact-graphics-script">Appendix A. Compact graphics script<a class="anchor" aria-label="anchor" href="#appendix-a--compact-graphics-script"></a>
+</h2>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">20260813</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span><span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>, <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"ternary_contour"</span>, file <span class="op">=</span> <span class="st">"contour.pdf"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"ternary_filled"</span>, file <span class="op">=</span> <span class="st">"filled.pdf"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"prediction_variance"</span>, file <span class="op">=</span> <span class="st">"variance.pdf"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"surface3d"</span>, engine <span class="op">=</span> <span class="st">"base"</span>, views <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>         file <span class="op">=</span> <span class="st">"surface.pdf"</span>, width <span class="op">=</span> <span class="fl">8</span>, height <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimize.html">mix_optimize</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"maximize"</span>, seed <span class="op">=</span> <span class="fl">20260813</span><span class="op">)</span></span>
+<span><span class="va">ci</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimum_ci.html">mix_optimum_ci</a></span><span class="op">(</span><span class="va">op</span>, B <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">20260814</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">op</span>, <span class="st">"optimum"</span>, file <span class="op">=</span> <span class="st">"optimum.pdf"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ci</span>, <span class="st">"optimum_ci"</span>, file <span class="op">=</span> <span class="st">"optimum_ci.pdf"</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette owns <strong>how results are visualized and
+exported</strong>. Statistical theory behind constrained geometry (24),
+optimal design (25), models (26/31), multiresponse decisions (28),
+optimum uncertainty (29), sequential experimentation (30), and software
+validation (33) is referenced rather than duplicated.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>A high-quality mixture figure should make the scientific geometry
+more visible, not less visible.</p>
+<p>A strong communication sequence is:</p>
+<p><strong>design support -&gt; fitted surface -&gt; diagnostic adequacy
+-&gt; uncertainty -&gt; optimum/trade-off -&gt; publication
+export.</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-graphics-laboratories">Appendix C. Advanced graphics laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-graphics-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-figure-consistency-audit">C1. Laboratory: figure consistency audit<a class="anchor" aria-label="anchor" href="#c1--laboratory-figure-consistency-audit"></a>
+</h3>
+<p>Generate:</p>
+<ol style="list-style-type: decimal">
+<li>ternary contour;</li>
+<li>filled contour;</li>
+<li>3D surface;</li>
+<li>direct prediction table on a grid.</li>
+</ol>
+<p>Select five compositions and verify that the response ordering is
+consistent across all four representations.</p>
+<div class="section level4">
+<h4 id="lesson">Lesson<a class="anchor" aria-label="anchor" href="#lesson"></a>
+</h4>
+<p>Different graphic engines should communicate the same numeric
+surface. A perspective or palette should never reverse scientific
+interpretation.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-design-support-overlay">C2. Laboratory: design support overlay<a class="anchor" aria-label="anchor" href="#c2--laboratory-design-support-overlay"></a>
+</h3>
+<p>Create a sparse design and a dense design fitted to the same
+synthetic surface. Plot fitted contours with observed design points.</p>
+<p>Discuss how the same smooth contour can look equally convincing even
+when one design has much weaker support. Then add a prediction-variance
+map.</p>
+<div class="section level4">
+<h4 id="lesson-1">Lesson<a class="anchor" aria-label="anchor" href="#lesson-1"></a>
+</h4>
+<p>Design points and uncertainty protect against the visual illusion of
+uniformly supported interpolation.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-vector-versus-raster">C3. Laboratory: vector versus raster<a class="anchor" aria-label="anchor" href="#c3--laboratory-vector-versus-raster"></a>
+</h3>
+<p>Export the same contour as PDF, SVG, PNG 300 dpi, and TIFF 600 dpi.
+Zoom to 800% and compare lines and text.</p>
+<p>Record:</p>
+<ul>
+<li>file size;</li>
+<li>physical dimensions;</li>
+<li>visual sharpness;</li>
+<li>journal suitability;</li>
+<li>editability.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-accessible-palette-check">C4. Laboratory: accessible palette check<a class="anchor" aria-label="anchor" href="#c4--laboratory-accessible-palette-check"></a>
+</h3>
+<p>Render the figure in color, grayscale, and a color-vision-deficiency
+simulator if available. Ensure the scientific pattern can still be
+understood from contours, labels, and symbols.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--graphics-troubleshooting-matrix">Appendix D. Graphics troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--graphics-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely issue</th>
+<th align="left">Response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">contour and 3D peak disagree</td>
+<td align="left">orientation/grid mismatch</td>
+<td align="left">verify predictions numerically</td>
+</tr>
+<tr class="even">
+<td align="left">labels clipped in PDF</td>
+<td align="left">margins/device dimensions</td>
+<td align="left">increase dimensions/margins and re-export</td>
+</tr>
+<tr class="odd">
+<td align="left">raster text blurry</td>
+<td align="left">low physical resolution</td>
+<td align="left">set final dimensions + adequate dpi</td>
+</tr>
+<tr class="even">
+<td align="left">SVG huge</td>
+<td align="left">overly dense surface grid</td>
+<td align="left">reduce resolution while preserving shape</td>
+</tr>
+<tr class="odd">
+<td align="left">Plotly works but static export differs</td>
+<td align="left">different engine rendering</td>
+<td align="left">treat numeric object as authority and validate
+both</td>
+</tr>
+<tr class="even">
+<td align="left">color scale hides boundary</td>
+<td align="left">low contrast</td>
+<td align="left">add contours/labels and accessible palette</td>
+</tr>
+<tr class="odd">
+<td align="left">response appears outside feasible region</td>
+<td align="left">grid not constrained</td>
+<td align="left">regenerate using package feasible grid</td>
+</tr>
+<tr class="even">
+<td align="left">observed points obscure contours</td>
+<td align="left">overplotting</td>
+<td align="left">adjust symbols/transparency without removing data
+support</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-graphics-exercises">Appendix E. Guided graphics exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-graphics-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--caption-completeness">Exercise 1. Caption completeness<a class="anchor" aria-label="anchor" href="#exercise-1--caption-completeness"></a>
+</h4>
+<p>Write a caption for a ternary contour including response, model,
+units, design points, and process settings.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--prediction-variance">Exercise 2. Prediction variance<a class="anchor" aria-label="anchor" href="#exercise-2--prediction-variance"></a>
+</h4>
+<p>Explain why a prediction-variance map belongs beside a response
+surface in a sparse constrained design.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--two-view-3d">Exercise 3. Two-view 3D<a class="anchor" aria-label="anchor" href="#exercise-3--two-view-3d"></a>
+</h4>
+<p>Explain what the second perspective contributes and why the ternary
+contour remains necessary.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--journal-export">Exercise 4. Journal export<a class="anchor" aria-label="anchor" href="#exercise-4--journal-export"></a>
+</h4>
+<p>Prepare one vector PDF and one 600-dpi TIFF at final publication
+size. Compare file metadata.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--grayscale">Exercise 5. Grayscale<a class="anchor" aria-label="anchor" href="#exercise-5--grayscale"></a>
+</h4>
+<p>Design a figure that remains interpretable when color is removed.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--process-slices">Exercise 6. Process slices<a class="anchor" aria-label="anchor" href="#exercise-6--process-slices"></a>
+</h4>
+<p>Create two ternary surfaces at different temperatures and use the
+same response scale so the panels are visually comparable.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--near-optimal-display">Exercise 7. Near-optimal display<a class="anchor" aria-label="anchor" href="#exercise-7--near-optimal-display"></a>
+</h4>
+<p>Distinguish exact optimum, near-optimal region, and optimum
+uncertainty cloud using different symbols/line types without implying
+false categories.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--pareto-labeling">Exercise 8. Pareto labeling<a class="anchor" aria-label="anchor" href="#exercise-8--pareto-labeling"></a>
+</h4>
+<p>Label three practically interesting Pareto solutions without
+overcrowding the plot.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--residual-figure">Exercise 9. Residual figure<a class="anchor" aria-label="anchor" href="#exercise-9--residual-figure"></a>
+</h4>
+<p>Explain why residuals versus fitted should not be shown as a ternary
+map by default.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--interactive-archive">Exercise 10. Interactive archive<a class="anchor" aria-label="anchor" href="#exercise-10--interactive-archive"></a>
+</h4>
+<p>Save the numeric predictions underlying an interactive Plotly surface
+so the analysis can be reproduced without the browser widget.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--accessibility">Exercise 11. Accessibility<a class="anchor" aria-label="anchor" href="#exercise-11--accessibility"></a>
+</h4>
+<p>Replace component labels A/B/C with real agronomic names and units.
+Check whether the figure remains legible at 85-mm journal width.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A paper shows a smooth ternary heat map with no design points, model
+name, or uncertainty. Draft a reviewer comment requesting the missing
+evidence.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-figure-audit">Appendix F. Reviewer-style figure audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-figure-audit"></a>
+</h2>
+<p>Verify:</p>
+<ol style="list-style-type: decimal">
+<li>component labels and units;</li>
+<li>feasible region;</li>
+<li>observed design support;</li>
+<li>model/smoothing source;</li>
+<li>prediction versus raw data distinction;</li>
+<li>uncertainty where relevant;</li>
+<li>process settings for slices;</li>
+<li>consistent scales across panels;</li>
+<li>nonmisleading perspective;</li>
+<li>accessible colors;</li>
+<li>vector/raster quality;</li>
+<li>caption sufficient for independent interpretation;</li>
+<li>reproducible code/object;</li>
+<li>no copied protected artwork.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--caption-templates">Appendix G. Caption templates<a class="anchor" aria-label="anchor" href="#appendix-g--caption-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="ternary-response-contour">Ternary response contour<a class="anchor" aria-label="anchor" href="#ternary-response-contour"></a>
+</h4>
+<blockquote>
+<p>Predicted [response, unit] from the fitted [model] over the feasible
+three-component mixture region. Points denote observed experimental
+formulations; contour lines represent equal fitted response. Predictions
+are restricted to the declared component bounds.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="prediction-variance">Prediction variance<a class="anchor" aria-label="anchor" href="#prediction-variance"></a>
+</h4>
+<blockquote>
+<p>Model-based prediction variance over the feasible mixture region for
+the fitted [model]. Lower values indicate greater design-supported
+precision; the map describes uncertainty of the fitted mean structure
+rather than observed response magnitude.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="dual-view-3d-surface">Dual-view 3D surface<a class="anchor" aria-label="anchor" href="#dual-view-3d-surface"></a>
+</h4>
+<blockquote>
+<p>Two vector-rendered perspectives of the fitted three-component
+response surface recalculated from the model predictions. The dual view
+is provided for geometric interpretation and is accompanied by the
+ternary contour for precise composition reading.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="optimum-uncertainty">Optimum uncertainty<a class="anchor" aria-label="anchor" href="#optimum-uncertainty"></a>
+</h4>
+<blockquote>
+<p>Joint distribution of reoptimized mixture compositions from repeated
+surface perturbations. The marker denotes the fitted optimum, while the
+cloud represents uncertainty in optimum location under the stated
+procedure.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-figure-case-bank">Appendix H. Applied figure case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-figure-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--journal-response-surface-figure">H1. Journal response-surface figure<a class="anchor" aria-label="anchor" href="#h1--journal-response-surface-figure"></a>
+</h3>
+<p>For a three-component fertilizer paper, use a vector ternary contour
+as the main response figure. Overlay design points, label component
+names/units, and state the fitted model in the caption. Add a separate
+prediction-variance panel if design support is uneven. The 3D dual-view
+surface can appear in supplementary material if it adds intuitive
+curvature information.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--constrained-formulation-figure">H2. Constrained formulation figure<a class="anchor" aria-label="anchor" href="#h2--constrained-formulation-figure"></a>
+</h3>
+<p>For a pesticide mixture with a combined-active ceiling, display the
+feasible polygon clearly inside the ternary coordinate frame. Do not
+fill the entire triangle with predictions. A reader should be able to
+see immediately which compositions were impossible or disallowed.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--mixture-process-figure-set">H3. Mixture-process figure set<a class="anchor" aria-label="anchor" href="#h3--mixture-process-figure-set"></a>
+</h3>
+<p>When temperature modifies the blending response, plot separate
+ternary surfaces at low, medium, and high temperature using identical
+response limits. This allows direct visual comparison. Captions should
+state every fixed process setting.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--optimum-decision-graphic">H4. Optimum decision graphic<a class="anchor" aria-label="anchor" href="#h4--optimum-decision-graphic"></a>
+</h3>
+<p>Combine response contours with the exact optimum, near-optimal
+region, and a separate optimum-uncertainty cloud. Use visual encodings
+that distinguish “nearly as good” from “statistically plausible optimum
+location.” They are different concepts and should not share one
+unlabeled shaded region.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--interactive-teaching-view">H5. Interactive teaching view<a class="anchor" aria-label="anchor" href="#h5--interactive-teaching-view"></a>
+</h3>
+<p>Use Plotly for classroom rotation and hover inspection, but archive
+the numeric prediction grid and a static PDF. An interactive widget is a
+presentation layer, not the sole scientific record.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-graphics-review">Appendix I. Short-answer graphics review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-graphics-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Why show design points?</strong> To reveal empirical support
+for interpolation.</li>
+<li>
+<strong>Why pair 3D with contours?</strong> Perspective shows shape;
+contours support precise composition reading.</li>
+<li>
+<strong>What does prediction variance show?</strong> Model/design
+uncertainty, not response magnitude.</li>
+<li>
+<strong>Why prefer vector output?</strong> Scalable lines/text for
+publication.</li>
+<li>
+<strong>When use 600-dpi raster?</strong> When a journal or graphic
+type requires raster output.</li>
+<li>
+<strong>Why use common scales across process slices?</strong> To
+avoid visual distortion of differences.</li>
+<li>
+<strong>What should every color map include?</strong> Numeric legend
+and units.</li>
+<li>
+<strong>Why archive numeric grids?</strong> To make graphics
+reproducible independently of rendering engine.</li>
+<li>
+<strong>What is an accessibility safeguard?</strong> Do not encode
+meaning only through color.</li>
+<li>
+<strong>What must a historical-style figure avoid?</strong> Copying
+protected artwork; recalculate from the fitted model.</li>
+</ol>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-j--deeper-conceptual-notes-on-visual-inference">Appendix J. Deeper conceptual notes on visual inference<a class="anchor" aria-label="anchor" href="#appendix-j--deeper-conceptual-notes-on-visual-inference"></a>
+</h2>
+<div class="section level3">
+<h3 id="j1--interpolation-density-is-not-information-density">J1. Interpolation density is not information density<a class="anchor" aria-label="anchor" href="#j1--interpolation-density-is-not-information-density"></a>
+</h3>
+<p>A contour can be rendered at thousands of grid points even when the
+experiment has ten unique blends. Rendering resolution improves visual
+smoothness, not experimental information. Show design points and, where
+useful, prediction variance so readers do not confuse pixel density with
+data density.</p>
+</div>
+<div class="section level3">
+<h3 id="j2--common-scales-are-required-for-visual-comparison">J2. Common scales are required for visual comparison<a class="anchor" aria-label="anchor" href="#j2--common-scales-are-required-for-visual-comparison"></a>
+</h3>
+<p>When comparing surfaces across treatments or process settings, use
+the same response limits whenever the scientific question concerns
+magnitude differences. Auto-scaling each panel can make small and large
+effects appear equally dramatic. If different scales are unavoidable,
+state that clearly.</p>
+</div>
+<div class="section level3">
+<h3 id="j3--perspective-can-distort-relative-importance">J3. Perspective can distort relative importance<a class="anchor" aria-label="anchor" href="#j3--perspective-can-distort-relative-importance"></a>
+</h3>
+<p>3D surfaces can make front edges appear visually dominant and can
+hide valleys behind peaks. The dual-view design reduces but does not
+eliminate perspective problems. A ternary contour remains the preferred
+companion for quantitative reading.</p>
+</div>
+<div class="section level3">
+<h3 id="j4--uncertainty-should-be-a-first-class-graphic">J4. Uncertainty should be a first-class graphic<a class="anchor" aria-label="anchor" href="#j4--uncertainty-should-be-a-first-class-graphic"></a>
+</h3>
+<p>A fitted surface without uncertainty can encourage overly precise
+decisions. Prediction-variance maps, confidence bands, and optimum
+clouds should be considered part of the main evidence when
+recommendations depend on poorly supported regions.</p>
+</div>
+<div class="section level3">
+<h3 id="j5--figure-provenance">J5. Figure provenance<a class="anchor" aria-label="anchor" href="#j5--figure-provenance"></a>
+</h3>
+<p>For publication-quality reproducibility, archive the R object used to
+create the figure, the plotting call, the exported file, and the
+package/session versions. If a figure is later edited externally,
+preserve both the original statistical export and the edited publication
+artifact.</p>
+</div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

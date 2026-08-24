@@ -60,8 +60,1749 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-constrained-mixture-geometry-pseudocomponents-and-feasible-regions">mixRSMflow: Constrained Mixture Geometry, Pseudocomponents, and
+Feasible Regions<a class="anchor" aria-label="anchor" href="#mixrsmflow-constrained-mixture-geometry-pseudocomponents-and-feasible-regions"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 24<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> mixture geometry, constraints,
+transformations, pseudocomponents, extreme vertices, major/minor and
+categorized component geometry<br><strong>Companion material:</strong>
+<code>23-foundations-to-advanced-tutorial-mixRSMflow.md</code>,
+<code>02-mixture-geometry.Rmd</code>,
+<code>04-constrained-regions.Rmd</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. It is
+designed as an extended teaching monograph and is not a rebuilt package
+vignette. Code should be run locally with the package version stated
+above.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-geometry-is-the-first-scientific-decision">1. Why geometry is the first scientific decision<a class="anchor" aria-label="anchor" href="#why-geometry-is-the-first-scientific-decision"></a>
+</h3>
+<p>In an ordinary response-surface experiment, several quantitative
+factors may vary independently inside a box, sphere, or other
+experimental region. A mixture experiment is different because the
+component amounts are linked by a total. If the components are
+proportions,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>i</mi></msub><mo>≥</mo><mn>0</mn><mo>,</mo><mspace width="2.0em"></mspace><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>q</mi></munderover><msub><mi>x</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+x_i \ge 0,\qquad \sum_{i=1}^q x_i = 1.
+</annotation></semantics></math></p>
+<p>If percentages are used, the same geometry is scaled to a total of
+100. The crucial fact is not the number 1 or 100. The crucial fact is
+that <strong>only <code>q - 1</code> coordinates are
+independent</strong>.</p>
+<p>This changes design, modeling, interpretation, and optimization. A
+researcher cannot increase one mixture component while keeping every
+other component fixed. At least one other component must decrease.
+Consequently, the experimental region is not an ordinary factorial cube.
+For three components, the unconstrained region is a triangle. For four
+components, it is a tetrahedron. For more components, it is a
+higher-dimensional simplex.</p>
+<p><code>mixRSMflow</code> therefore starts with <code><a href="../reference/mix_spec.html">mix_spec()</a></code>
+rather than with a modeling function.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>define a full or constrained mixture system reproducibly;</li>
+<li>explain the fixed-sum dependence among component coordinates;</li>
+<li>validate lower and upper bounds before design generation;</li>
+<li>encode general linear inequalities and equalities;</li>
+<li>enumerate and interpret extreme vertices of a feasible
+polytope;</li>
+<li>distinguish the unrestricted simplex from the actual feasible
+region;</li>
+<li>transform proportions to orthonormal independent coordinates and
+back;</li>
+<li>define spherical, ellipsoidal, and cuboidal local regions in the
+independent-coordinate system;</li>
+<li>use lower-bound and upper-bound pseudocomponents and invert the
+transformation;</li>
+<li>reparameterize a fitted mixture model through a slack component when
+scientifically useful;</li>
+<li>construct major/minor multiple-lattice geometries;</li>
+<li>create categorized-component designs without confusing grouped
+geometry with unsupported historical coefficient transformations;</li>
+<li>recognize nearly degenerate regions before fitting unstable
+models;</li>
+<li>prepare a geometry object that can be handed to the optimal-design
+workflow without redefining the science.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map-for-this-vignette">3. Function map for this vignette<a class="anchor" aria-label="anchor" href="#function-map-for-this-vignette"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Task</th>
+<th align="left">Primary function</th>
+<th align="left">Output</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Declare components and constraints</td>
+<td align="left"><code><a href="../reference/mix_spec.html">mix_spec()</a></code></td>
+<td align="left"><code>mix_spec</code></td>
+</tr>
+<tr class="even">
+<td align="left">Add a local region of interest</td>
+<td align="left"><code><a href="../reference/mix_region.html">mix_region()</a></code></td>
+<td align="left"><code>mix_region</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Enumerate feasible extreme vertices</td>
+<td align="left"><code><a href="../reference/mix_vertices.html">mix_vertices()</a></code></td>
+<td align="left">vertex data frame</td>
+</tr>
+<tr class="even">
+<td align="left">Map to <code>q-1</code> independent coordinates</td>
+<td align="left"><code><a href="../reference/mix_transform.html">mix_transform()</a></code></td>
+<td align="left">numeric/data-frame coordinates</td>
+</tr>
+<tr class="odd">
+<td align="left">Return to original proportions</td>
+<td align="left"><code><a href="../reference/mix_inverse_transform.html">mix_inverse_transform()</a></code></td>
+<td align="left">original mixture coordinates</td>
+</tr>
+<tr class="even">
+<td align="left">Transform lower/upper bounded systems</td>
+<td align="left"><code><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents()</a></code></td>
+<td align="left">L/U pseudocomponents</td>
+</tr>
+<tr class="odd">
+<td align="left">Choose a slack component</td>
+<td align="left"><code><a href="../reference/mix_reparameterize.html">mix_reparameterize()</a></code></td>
+<td align="left">reparameterized fit</td>
+</tr>
+<tr class="even">
+<td align="left">Major/minor component lattices</td>
+<td align="left"><code><a href="../reference/mix_multiple_lattice.html">mix_multiple_lattice()</a></code></td>
+<td align="left"><code>mix_design</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Categorized components</td>
+<td align="left"><code><a href="../reference/mix_categorized_design.html">mix_categorized_design()</a></code></td>
+<td align="left"><code>mix_design</code></td>
+</tr>
+<tr class="even">
+<td align="left">Visual inspection</td>
+<td align="left"><code><a href="../reference/mix_plot.html">mix_plot()</a></code></td>
+<td align="left">static or optional interactive graphic</td>
+</tr>
+<tr class="odd">
+<td align="left">Record provenance</td>
+<td align="left"><code><a href="../reference/mix_audit_trail.html">mix_audit_trail()</a></code></td>
+<td align="left">audit table</td>
+</tr>
+</tbody>
+</table>
+<p>This vignette stops before optimality-criterion theory. Once the
+feasible region is defined, see Extended Vignette 25 for D-, A-, I-, G-,
+E-, T-, Alias-, Bayesian, GA, FDS, VDG, IMSE, and rotatability
+workflows.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--full-simplex-foundations">Part I. Full-simplex foundations<a class="anchor" aria-label="anchor" href="#part-i--full-simplex-foundations"></a>
+</h2>
+<div class="section level3">
+<h3 id="a-three-component-agronomic-formulation">4. A three-component agronomic formulation<a class="anchor" aria-label="anchor" href="#a-three-component-agronomic-formulation"></a>
+</h3>
+<p>Suppose a substrate formulation contains:</p>
+<ul>
+<li>
+<code>Compost</code>;</li>
+<li>
+<code>Biochar</code>;</li>
+<li>
+<code>Mineral</code> carrier.</li>
+</ul>
+<p>Create the unrestricted system:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  components <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  total <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  units <span class="op">=</span> <span class="st">"proportion"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_full</span></span></code></pre></div>
+<p>The object stores the component names, the total, default bounds,
+numerical tolerance, independent-coordinate basis, feasible center, and
+an audit record.</p>
+<div class="section level4">
+<h4 id="why-store-the-region-in-an-object">4.1 Why store the region in an object?<a class="anchor" aria-label="anchor" href="#why-store-the-region-in-an-object"></a>
+</h4>
+<p>A script that repeatedly writes constraints by hand is vulnerable to
+silent inconsistency. One analysis may use
+<code>Biochar &lt;= 0.30</code>, another
+<code>Biochar &lt;= 0.35</code>, and a third may forget the restriction
+entirely. A <code>mix_spec</code> object makes the region an explicit
+scientific object that is passed to design, modeling, prediction, and
+optimization functions.</p>
+</div>
+<div class="section level4">
+<h4 id="inspect-the-provenance">4.2 Inspect the provenance<a class="anchor" aria-label="anchor" href="#inspect-the-provenance"></a>
+</h4>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_audit_trail.html">mix_audit_trail</a></span><span class="op">(</span><span class="va">sp_full</span><span class="op">)</span></span></code></pre></div>
+<p>The audit trail is not a substitute for an electronic laboratory
+notebook. It is an internal record of package-level choices.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="the-simplex-as-a-coordinate-system">5. The simplex as a coordinate system<a class="anchor" aria-label="anchor" href="#the-simplex-as-a-coordinate-system"></a>
+</h3>
+<p>For three components, a point such as</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Compost <span class="op">=</span> <span class="fl">0.40</span>,</span>
+<span>  Biochar <span class="op">=</span> <span class="fl">0.20</span>,</span>
+<span>  Mineral <span class="op">=</span> <span class="fl">0.40</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>satisfies</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.40</mn><mo>+</mo><mn>0.20</mn><mo>+</mo><mn>0.40</mn><mo>=</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+0.40+0.20+0.40=1.
+</annotation></semantics></math></p>
+<p>Changing compost to 0.50 requires a compensating change in biochar,
+mineral carrier, or both.</p>
+<p>This is why an ordinary coefficient interpretation such as “the
+effect of a one-unit increase in Compost while all other predictors are
+held constant” does not describe an admissible movement in the
+formulation region.</p>
+<p>The component-effect functions are treated in the master tutorial and
+focused component-effects vignette. Here the concern is the geometry
+that makes those paths necessary.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="four-components-and-higher-dimensional-simplices">6. Four components and higher-dimensional simplices<a class="anchor" aria-label="anchor" href="#four-components-and-higher-dimensional-simplices"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span>, <span class="st">"Fiber"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A four-component full simplex is a tetrahedron. With five or more
+components, no ordinary 2D or 3D plot can display the complete geometry
+without projection, slicing, or profile views.</p>
+<p>The absence of a visually simple simplex does not change the
+mathematics. The fixed-sum dimension remains <code>q - 1</code>.</p>
+<div class="section level4">
+<h4 id="practical-consequence">Practical consequence<a class="anchor" aria-label="anchor" href="#practical-consequence"></a>
+</h4>
+<p>As <code>q</code> grows, blindly generating a dense lattice becomes
+expensive. Constraint handling, candidate-set generation, and model
+dimension should be considered before a high-degree design is
+requested.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--bounds-and-general-restrictions">Part II. Bounds and general restrictions<a class="anchor" aria-label="anchor" href="#part-ii--bounds-and-general-restrictions"></a>
+</h2>
+<div class="section level3">
+<h3 id="lower-bounds">7. Lower bounds<a class="anchor" aria-label="anchor" href="#lower-bounds"></a>
+</h3>
+<p>Agronomic formulations rarely permit all components to reach zero.
+Suppose every substrate must contain at least:</p>
+<ul>
+<li>20% compost;</li>
+<li>5% biochar;</li>
+<li>10% mineral carrier.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The lower bounds consume 0.35 of the total. Therefore 0.65 remains
+free for redistribution.</p>
+<p>A basic feasibility identity is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>L</mi><mi>i</mi></msub><mo>≤</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\sum_i L_i \le 1.
+</annotation></semantics></math></p>
+<p>If the sum of lower bounds exceeds the total, no formulation can
+satisfy the declared system.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="upper-bounds">8. Upper bounds<a class="anchor" aria-label="anchor" href="#upper-bounds"></a>
+</h3>
+<p>Suppose biochar cannot exceed 35% because of pH or conductivity
+considerations:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_upper</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.35</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A necessary feasibility condition is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>U</mi><mi>i</mi></msub><mo>≥</mo><mn>1</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\sum_i U_i \ge 1.
+</annotation></semantics></math></p>
+<p>This condition is necessary but may not be sufficient when additional
+linear constraints are present.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="simultaneous-lower-and-upper-bounds">9. Simultaneous lower and upper bounds<a class="anchor" aria-label="anchor" href="#simultaneous-lower-and-upper-bounds"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_bounded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  components <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.35</span>, <span class="fl">0.60</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Before designing an experiment, ask whether the upper and lower
+bounds reflect:</p>
+<ul>
+<li>safety or regulatory requirements;</li>
+<li>material availability;</li>
+<li>agronomic plausibility;</li>
+<li>equipment limits;</li>
+<li>prior knowledge;</li>
+<li>or an arbitrary choice made to simplify the experiment.</li>
+</ul>
+<p>Artificially narrow bounds can create severe model conditioning
+problems and can hide the shape of the response surface.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="general-linear-inequalities">10. General linear inequalities<a class="anchor" aria-label="anchor" href="#general-linear-inequalities"></a>
+</h3>
+<p>Suppose compost and biochar together may not exceed 0.80.</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mrow><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>o</mi><mi>s</mi><mi>t</mi></mrow></msub><mo>+</mo><msub><mi>x</mi><mrow><mi>B</mi><mi>i</mi><mi>o</mi><mi>c</mi><mi>h</mi><mi>a</mi><mi>r</mi></mrow></msub><mo>≤</mo><mn>0.80</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+x_{Compost}+x_{Biochar}\le0.80.
+</annotation></semantics></math></p>
+<p>Encode the restriction as:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">A</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  nrow <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_linear</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  components <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.35</span>, <span class="fl">0.60</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="va">A</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.80</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The matrix <code>A</code> contains one row per declared restriction
+and <code>b</code> contains the corresponding right-hand sides.</p>
+<div class="section level4">
+<h4 id="several-restrictions">10.1 Several restrictions<a class="anchor" aria-label="anchor" href="#several-restrictions"></a>
+</h4>
+<p>For example:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mtable><mtr><mtd columnalign="right" style="text-align: right; padding-right: 0"><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>o</mi><mi>s</mi><mi>t</mi><mo>+</mo><mi>B</mi><mi>i</mi><mi>o</mi><mi>c</mi><mi>h</mi><mi>a</mi><mi>r</mi></mtd><mtd columnalign="left" style="text-align: left; padding-left: 0"><mo>≤</mo><mn>0.80</mn><mo>,</mo></mtd></mtr><mtr><mtd columnalign="right" style="text-align: right; padding-right: 0"><mi>B</mi><mi>i</mi><mi>o</mi><mi>c</mi><mi>h</mi><mi>a</mi><mi>r</mi><mo>+</mo><mi>M</mi><mi>i</mi><mi>n</mi><mi>e</mi><mi>r</mi><mi>a</mi><mi>l</mi></mtd><mtd columnalign="left" style="text-align: left; padding-left: 0"><mo>≥</mo><mn>0.30</mn><mi>.</mi></mtd></mtr></mtable><annotation encoding="application/x-tex">
+\begin{aligned}
+Compost + Biochar &amp;\le 0.80,\\
+Biochar + Mineral &amp;\ge 0.30.
+\end{aligned}
+</annotation></semantics></math></p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">A2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_multi_constraint</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  components <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Compost"</span>, <span class="st">"Biochar"</span>, <span class="st">"Mineral"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.35</span>, <span class="fl">0.60</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="va">A2</span>,</span>
+<span>  b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.30</span><span class="op">)</span>,</span>
+<span>  dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"&lt;="</span>, <span class="st">"&gt;="</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="reporting-rule">Reporting rule<a class="anchor" aria-label="anchor" href="#reporting-rule"></a>
+</h4>
+<p>Publish the constraints in the original scientific units, not only as
+an internal matrix.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="equality-constraints">11. Equality constraints<a class="anchor" aria-label="anchor" href="#equality-constraints"></a>
+</h3>
+<p>Some formulations contain balance identities beyond the total. For
+example, a grouped nutrient fraction might be fixed by a manufacturing
+specification.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_eq</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"D"</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.50</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"=="</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>An equality can reduce the effective dimension of the feasible region
+further. If too many independent equalities are added, the region can
+collapse to a line, a point, or an empty set.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--extreme-vertices-and-feasible-polytopes">Part III. Extreme vertices and feasible polytopes<a class="anchor" aria-label="anchor" href="#part-iii--extreme-vertices-and-feasible-polytopes"></a>
+</h2>
+<div class="section level3">
+<h3 id="enumerate-extreme-vertices">12. Enumerate extreme vertices<a class="anchor" aria-label="anchor" href="#enumerate-extreme-vertices"></a>
+</h3>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp_linear</span><span class="op">)</span></span>
+<span><span class="va">V</span></span></code></pre></div>
+<p>For a convex polytope, the vertices define its corners. In a
+constrained mixture experiment they are important because:</p>
+<ul>
+<li>they reveal the actual region shape;</li>
+<li>some design algorithms draw candidates from the boundary;</li>
+<li>a seemingly mild set of bounds can produce a narrow irregular
+polygon;</li>
+<li>extreme-vertices designs begin from these corners;</li>
+<li>optimization results often occur on a boundary.</li>
+</ul>
+<div class="section level4">
+<h4 id="verify-numerically">12.1 Verify numerically<a class="anchor" aria-label="anchor" href="#verify-numerically"></a>
+</h4>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">Compost</span> <span class="op">&gt;=</span> <span class="fl">0.20</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">Biochar</span> <span class="op">&gt;=</span> <span class="fl">0.05</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">Mineral</span> <span class="op">&gt;=</span> <span class="fl">0.10</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">Compost</span> <span class="op">+</span> <span class="va">V</span><span class="op">$</span><span class="va">Biochar</span> <span class="op">&lt;=</span> <span class="fl">0.80</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This type of invariant check is valuable in local validation and
+custom preprocessing.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="active-constraints-and-geometric-meaning">13. Active constraints and geometric meaning<a class="anchor" aria-label="anchor" href="#active-constraints-and-geometric-meaning"></a>
+</h3>
+<p>A vertex typically occurs where enough constraints become active
+simultaneously. In three components, the sum constraint plus two
+independent active bounds or inequalities can define a corner.</p>
+<p>Scientific interpretation should ask what creates each corner:</p>
+<ul>
+<li>minimum biochar plus maximum compost;</li>
+<li>minimum compost plus the combined organic-matter limit;</li>
+<li>maximum mineral carrier plus another bound;</li>
+<li>or an intersection of two general inequalities.</li>
+</ul>
+<p>Understanding the active constraints is useful when a predicted
+optimum lands on a corner. The optimum may be driven by the imposed
+feasibility rule as much as by the fitted response surface.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="extreme-vertices-design-as-a-geometric-inspection-tool">14. Extreme-vertices design as a geometric inspection tool<a class="anchor" aria-label="anchor" href="#extreme-vertices-design-as-a-geometric-inspection-tool"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_linear</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ev</span>, type <span class="op">=</span> <span class="st">"design"</span><span class="op">)</span></span></code></pre></div>
+<p>The design includes the boundary geometry and optional interior
+support. It is useful as a first look at the constrained region.</p>
+<p>It is <strong>not</strong> automatically the best design for
+parameter precision or prediction. That question belongs to Extended
+Vignette 25.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="thin-narrow-and-nearly-degenerate-regions">15. Thin, narrow, and nearly degenerate regions<a class="anchor" aria-label="anchor" href="#thin-narrow-and-nearly-degenerate-regions"></a>
+</h3>
+<p>A feasible region can be mathematically nonempty but statistically
+problematic.</p>
+<p>Examples include:</p>
+<ul>
+<li>one component restricted to a range of only 0.01;</li>
+<li>two strong inequalities that leave a very thin strip;</li>
+<li>four components with two nearly redundant equality constraints;</li>
+<li>a region whose vertices are numerically almost collinear.</li>
+</ul>
+<p>Consequences include:</p>
+<ul>
+<li>near-rank deficiency;</li>
+<li>large condition numbers;</li>
+<li>highly correlated parameter estimates;</li>
+<li>unstable high-order terms;</li>
+<li>unreliable boundary extrapolation.</li>
+</ul>
+<div class="section level4">
+<h4 id="recommended-workflow">Recommended workflow<a class="anchor" aria-label="anchor" href="#recommended-workflow"></a>
+</h4>
+<ol style="list-style-type: decimal">
+<li>inspect vertices;</li>
+<li>transform to independent coordinates;</li>
+<li>inspect spread in each independent direction;</li>
+<li>choose the simplest scientifically adequate model;</li>
+<li>evaluate candidate designs using prediction variance and
+conditioning;</li>
+<li>augment the region only if the scientific formulation constraints
+truly permit it.</li>
+</ol>
+<p>Do not widen a safety or biological constraint merely to improve
+numerical conditioning.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--independent-coordinate-transformations">Part IV. Independent-coordinate transformations<a class="anchor" aria-label="anchor" href="#part-iv--independent-coordinate-transformations"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-transform-to-q---1-coordinates">16. Why transform to <code>q - 1</code> coordinates?<a class="anchor" aria-label="anchor" href="#why-transform-to-q---1-coordinates"></a>
+</h3>
+<p>The original components contain one exact linear dependence. An
+orthonormal contrast basis spans the subspace perpendicular to the
+vector of ones.</p>
+<p>For a center <code>c</code> and basis <code>H</code>,
+<code>mixRSMflow</code> uses</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>−</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mi>H</mi><mo>,</mo></mrow><annotation encoding="application/x-tex">
+z=(x-c)H,
+</annotation></semantics></math></p>
+<p>with inverse</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mi>c</mi><mo>+</mo><mi>z</mi><msup><mi>H</mi><mi>T</mi></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">
+x=c+zH^T.
+</annotation></semantics></math></p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.50</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.35</span>, <span class="fl">0.20</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.45</span>, <span class="fl">0.30</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">z</span></span>
+<span></span>
+<span><span class="va">x_back</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_inverse_transform.html">mix_inverse_transform</a></span><span class="op">(</span><span class="va">z</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">x_back</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="numerical-verification">Numerical verification<a class="anchor" aria-label="anchor" href="#numerical-verification"></a>
+</h4>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">x_back</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The result should be near numerical precision for admissible
+inputs.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="changing-the-transformation-center">17. Changing the transformation center<a class="anchor" aria-label="anchor" href="#changing-the-transformation-center"></a>
+</h3>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>A <span class="op">=</span> <span class="fl">0.40</span>, B <span class="op">=</span> <span class="fl">0.25</span>, C <span class="op">=</span> <span class="fl">0.35</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">z2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  center <span class="op">=</span> <span class="va">center</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A local center can be scientifically meaningful when a current
+commercial or agronomic formulation is the reference point.</p>
+<p>However, changing coordinates does not change which original mixtures
+are feasible.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--local-regions-of-interest">Part V. Local regions of interest<a class="anchor" aria-label="anchor" href="#part-v--local-regions-of-interest"></a>
+</h2>
+<div class="section level3">
+<h3 id="polytope-region">18. Polytope region<a class="anchor" aria-label="anchor" href="#polytope-region"></a>
+</h3>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">rg_poly</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_region.html">mix_region</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_linear</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"polytope"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This keeps the constraints directly in original mixture space.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="spherical-region-in-independent-coordinates">19. Spherical region in independent coordinates<a class="anchor" aria-label="anchor" href="#spherical-region-in-independent-coordinates"></a>
+</h3>
+<p>Suppose a researcher wants to study only a neighborhood around the
+center:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_center</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">rg_sphere</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_region.html">mix_region</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_center</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"sphere"</span>,</span>
+<span>  radius <span class="op">=</span> <span class="fl">0.15</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The sphere is defined in the independent-coordinate system, then
+mapped back to the mixture geometry.</p>
+<p>This can support local response-surface designs without pretending
+the three proportions vary independently.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ellipsoidal-region">20. Ellipsoidal region<a class="anchor" aria-label="anchor" href="#ellipsoidal-region"></a>
+</h3>
+<p>If scientific prior information suggests different allowable movement
+along the two independent directions:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fl">1.00</span>, <span class="fl">0.20</span>,</span>
+<span>    <span class="fl">0.20</span>, <span class="fl">0.50</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  nrow <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  byrow <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">rg_ell</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_region.html">mix_region</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_center</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"ellipsoid"</span>,</span>
+<span>  shape <span class="op">=</span> <span class="va">shape</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>An ellipsoid can encode directional asymmetry in the local region of
+interest.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="cuboidal-region">21. Cuboidal region<a class="anchor" aria-label="anchor" href="#cuboidal-region"></a>
+</h3>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">rg_box</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_region.html">mix_region</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_center</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"cuboid"</span>,</span>
+<span>  lower_y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.15</span>, <span class="op">-</span><span class="fl">0.08</span><span class="op">)</span>,</span>
+<span>  upper_y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="fl">0.12</span>,  <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A cuboid in independent coordinates can be convenient when
+operational process windows are naturally described by independent
+contrasts.</p>
+<div class="section level4">
+<h4 id="reporting-caution">Reporting caution<a class="anchor" aria-label="anchor" href="#reporting-caution"></a>
+</h4>
+<p>Always translate the final experimental points back to original
+component proportions. Independent coordinates are a mathematical
+working system, not the formulation recipe.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--pseudocomponents">Part VI. Pseudocomponents<a class="anchor" aria-label="anchor" href="#part-vi--pseudocomponents"></a>
+</h2>
+<div class="section level3">
+<h3 id="lower-bound-pseudocomponents">22. Lower-bound pseudocomponents<a class="anchor" aria-label="anchor" href="#lower-bound-pseudocomponents"></a>
+</h3>
+<p>Let lower bounds be <code>L_i</code>. Define</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mo>+</mo></msub><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>L</mi><mi>i</mi></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">
+L_+=\sum_i L_i,
+</annotation></semantics></math></p>
+<p>and for a feasible original mixture,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mi>i</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><msub><mi>L</mi><mi>i</mi></msub></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>L</mi><mo>+</mo></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">
+z_i=\frac{x_i-L_i}{1-L_+}.
+</annotation></semantics></math></p>
+<p>Then the <code>z_i</code> sum to one.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.20</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">xL</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.40</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.20</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.40</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">zL</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span></span>
+<span>  <span class="va">xL</span>,</span>
+<span>  <span class="va">sp_L</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"L"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">zL</span></span></code></pre></div>
+<p>Invert:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span></span>
+<span>  <span class="va">zL</span>,</span>
+<span>  <span class="va">sp_L</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"L"</span>,</span>
+<span>  inverse <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>L-pseudocomponents remove mandatory minimum amounts from the
+coordinate system. They do not remove the minimum requirements from the
+real formulation.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="upper-bound-pseudocomponents">23. Upper-bound pseudocomponents<a class="anchor" aria-label="anchor" href="#upper-bound-pseudocomponents"></a>
+</h3>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_U</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.70</span>, <span class="fl">0.70</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">xU</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.40</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.20</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.40</span>, <span class="fl">0.40</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">zU</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span></span>
+<span>  <span class="va">xU</span>,</span>
+<span>  <span class="va">sp_U</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"U"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">zU</span></span></code></pre></div>
+<p>Invert:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span></span>
+<span>  <span class="va">zU</span>,</span>
+<span>  <span class="va">sp_U</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"U"</span>,</span>
+<span>  inverse <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="when-to-avoid-pseudocomponents">When to avoid pseudocomponents<a class="anchor" aria-label="anchor" href="#when-to-avoid-pseudocomponents"></a>
+</h4>
+<p>Do not use a transformed coordinate system merely to make a figure
+look more regular. Use it when it improves a specific design or modeling
+argument and retain the original-scale results for scientific
+communication.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--slack-variable-parameterization">Part VII. Slack-variable parameterization<a class="anchor" aria-label="anchor" href="#part-vii--slack-variable-parameterization"></a>
+</h2>
+<div class="section level3">
+<h3 id="what-a-slack-component-means">24. What a slack component means<a class="anchor" aria-label="anchor" href="#what-a-slack-component-means"></a>
+</h3>
+<p>Because one component is determined by the total,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>x</mi><mi>q</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mrow><mi>q</mi><mo>−</mo><mn>1</mn></mrow></munderover><msub><mi>x</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+x_q=1-\sum_{i=1}^{q-1}x_i.
+</annotation></semantics></math></p>
+<p>A model can therefore be reexpressed with one component serving as
+the slack variable.</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_demo_data.html">mix_demo_data</a></span><span class="op">(</span><span class="st">"mixture"</span>, n_rep <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">24001</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_fit.html">mix_fit</a></span><span class="op">(</span><span class="st">"response"</span>, <span class="va">d</span>, <span class="va">sp</span>, <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_slack</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_reparameterize.html">mix_reparameterize</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  slack_component <span class="op">=</span> <span class="st">"C"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_slack</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>Changing the slack component changes the coefficient parameterization
+but should not change fitted values for the same underlying model
+space.</p>
+<p>Use the parameterization that best supports the scientific
+explanation, not the one that produces the most convenient coefficient
+signs.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--majorminor-and-categorized-component-geometries">Part VIII. Major/minor and categorized component geometries<a class="anchor" aria-label="anchor" href="#part-viii--majorminor-and-categorized-component-geometries"></a>
+</h2>
+<div class="section level3">
+<h3 id="major-and-minor-components">25. Major and minor components<a class="anchor" aria-label="anchor" href="#major-and-minor-components"></a>
+</h3>
+<p>Many agronomic formulations contain major ingredients that account
+for most of the total and minor additives that occupy a small
+fraction.</p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp5</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Base1"</span>, <span class="st">"Base2"</span>, <span class="st">"Additive1"</span>, <span class="st">"Additive2"</span>, <span class="st">"Additive3"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ml</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_multiple_lattice.html">mix_multiple_lattice</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp5</span>,</span>
+<span>  major <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Base1"</span>, <span class="st">"Base2"</span><span class="op">)</span>,</span>
+<span>  minor <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Additive1"</span>, <span class="st">"Additive2"</span>, <span class="st">"Additive3"</span><span class="op">)</span>,</span>
+<span>  major_totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.90</span><span class="op">)</span>,</span>
+<span>  major_degree <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  minor_degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ml</span></span></code></pre></div>
+<p>The function constructs several lattice structures while respecting
+the major-component total.</p>
+<div class="section level4">
+<h4 id="scientific-use">Scientific use<a class="anchor" aria-label="anchor" href="#scientific-use"></a>
+</h4>
+<p>Examples include:</p>
+<ul>
+<li>two bulk substrate materials plus micronutrient carriers;</li>
+<li>base oil fractions plus small adjuvant fractions;</li>
+<li>protein/energy bases plus microingredients;</li>
+<li>carrier materials plus biological additives.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="categorized-components">26. Categorized components<a class="anchor" aria-label="anchor" href="#categorized-components"></a>
+</h3>
+<p>Suppose five components belong to two scientifically meaningful
+categories.</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">categories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  organic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CompostA"</span>, <span class="st">"CompostB"</span><span class="op">)</span>,</span>
+<span>  mineral <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"MineralA"</span>, <span class="st">"MineralB"</span>, <span class="st">"MineralC"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_cat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">categories</span>, use.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_categorized_design.html">mix_categorized_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_cat</span>,</span>
+<span>  categories <span class="op">=</span> <span class="va">categories</span>,</span>
+<span>  between_degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  within_degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  category_totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>organic <span class="op">=</span> <span class="fl">0.60</span>, mineral <span class="op">=</span> <span class="fl">0.40</span><span class="op">)</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">26001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cd</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="method-gate">Method gate<a class="anchor" aria-label="anchor" href="#method-gate"></a>
+</h4>
+<p>The package implements the grouped design geometry. Historical
+coefficient-transformation formulas for specific categorized-component
+models are not silently claimed unless they are explicitly implemented
+and validated. Consult <code>inst/METHOD_GATES.md</code> before
+presenting a historical transformation as a reproduced package
+feature.</p>
+<p>This distinction is important: <strong>a design geometry can be
+implemented correctly even when a specialized historical coefficient
+mapping remains outside the current validated scope.</strong></p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--mixture-of-mixtures-as-a-hierarchical-formulation-concept">Part IX. Mixture of mixtures as a hierarchical formulation
+concept<a class="anchor" aria-label="anchor" href="#part-ix--mixture-of-mixtures-as-a-hierarchical-formulation-concept"></a>
+</h2>
+<div class="section level3">
+<h3 id="conceptual-structure">27. Conceptual structure<a class="anchor" aria-label="anchor" href="#conceptual-structure"></a>
+</h3>
+<p>A mixture of mixtures occurs when one or more components are
+themselves sub-mixtures. For example:</p>
+<ol style="list-style-type: decimal">
+<li>an organic base is prepared from compost types;</li>
+<li>a mineral base is prepared from mineral carriers;</li>
+<li>the two sub-mixtures are then combined at a higher level.</li>
+</ol>
+<p>The geometry has two scales:</p>
+<ul>
+<li>within-submixture proportions;</li>
+<li>between-submixture totals.</li>
+</ul>
+<p>The current package supports design structures that can be assembled
+from grouped/categorized and major/minor constructions. The complete
+scientific interpretation should preserve both levels rather than
+flattening every ingredient into an undifferentiated list.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--a-complete-agronomic-constrained-region-workflow">Part X. A complete agronomic constrained-region workflow<a class="anchor" aria-label="anchor" href="#part-x--a-complete-agronomic-constrained-region-workflow"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-problem">28. Scientific problem<a class="anchor" aria-label="anchor" href="#scientific-problem"></a>
+</h3>
+<p>A nursery experiment will optimize a substrate consisting of:</p>
+<ul>
+<li>compost <code>C</code>;</li>
+<li>biochar <code>B</code>;</li>
+<li>mineral carrier <code>M</code>.</li>
+</ul>
+<p>Requirements:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.20</mn><mo>≤</mo><mi>C</mi><mo>≤</mo><mn>0.70</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">
+0.20 \le C \le 0.70,
+</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.05</mn><mo>≤</mo><mi>B</mi><mo>≤</mo><mn>0.35</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">
+0.05 \le B \le 0.35,
+</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.10</mn><mo>≤</mo><mi>M</mi><mo>≤</mo><mn>0.60</mn><mo>,</mo></mrow><annotation encoding="application/x-tex">
+0.10 \le M \le 0.60,
+</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>+</mo><mi>B</mi><mo>≤</mo><mn>0.80</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">
+C+B\le0.80.
+</annotation></semantics></math></p>
+<div class="section level4">
+<h4 id="step-1-create-the-reproducible-specification">Step 1: create the reproducible specification<a class="anchor" aria-label="anchor" href="#step-1-create-the-reproducible-specification"></a>
+</h4>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="st">"B"</span>, <span class="st">"M"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.35</span>, <span class="fl">0.60</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.80</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-2-enumerate-the-vertices">Step 2: enumerate the vertices<a class="anchor" aria-label="anchor" href="#step-2-enumerate-the-vertices"></a>
+</h4>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">V</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-3-check-invariants">Step 3: check invariants<a class="anchor" aria-label="anchor" href="#step-3-check-invariants"></a>
+</h4>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">C</span> <span class="op">&gt;=</span> <span class="fl">0.20</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&gt;=</span> <span class="fl">0.05</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">M</span> <span class="op">&gt;=</span> <span class="fl">0.10</span> <span class="op">-</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">C</span> <span class="op">&lt;=</span> <span class="fl">0.70</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.35</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">M</span> <span class="op">&lt;=</span> <span class="fl">0.60</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">C</span> <span class="op">+</span> <span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.80</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-4-inspect-an-extreme-vertices-design">Step 4: inspect an extreme-vertices design<a class="anchor" aria-label="anchor" href="#step-4-inspect-an-extreme-vertices-design"></a>
+</h4>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">d0</span>, type <span class="op">=</span> <span class="st">"design"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-5-transform-to-independent-coordinates">Step 5: transform to independent coordinates<a class="anchor" aria-label="anchor" href="#step-5-transform-to-independent-coordinates"></a>
+</h4>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">V</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="va">Z</span></span></code></pre></div>
+<p>Check whether one direction is almost unrepresented. This can reveal
+a very thin feasible region.</p>
+</div>
+<div class="section level4">
+<h4 id="step-6-store-the-geometry-for-the-next-workflow">Step 6: store the geometry for the next workflow<a class="anchor" aria-label="anchor" href="#step-6-store-the-geometry-for-the-next-workflow"></a>
+</h4>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  file <span class="op">=</span> <span class="st">"substrate_mixture_spec.rds"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The next scientific decision is not to fit a response model. No
+response has been collected yet. The next decision is to choose an
+experimental design that provides adequate information for the intended
+model. That topic belongs to Extended Vignette 25.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--common-mistakes">Part XI. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xi--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="specifying-bounds-that-cannot-sum-to-the-total">29. Specifying bounds that cannot sum to the total<a class="anchor" aria-label="anchor" href="#specifying-bounds-that-cannot-sum-to-the-total"></a>
+</h3>
+<p>Check:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∑</mo><msub><mi>L</mi><mi>i</mi></msub><mo>≤</mo><mi>T</mi><mo>≤</mo><mo>∑</mo><msub><mi>U</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\sum L_i\le T\le\sum U_i.
+</annotation></semantics></math></p>
+<p>Then check all additional constraints.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="plotting-the-full-simplex-after-imposing-constraints">30. Plotting the full simplex after imposing constraints<a class="anchor" aria-label="anchor" href="#plotting-the-full-simplex-after-imposing-constraints"></a>
+</h3>
+<p>A ternary triangle can remain a useful coordinate frame, but visually
+distinguish the admissible subregion. Do not imply that predictions or
+experimental support cover the entire triangle.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="assuming-every-extreme-vertex-should-be-tested">31. Assuming every extreme vertex should be tested<a class="anchor" aria-label="anchor" href="#assuming-every-extreme-vertex-should-be-tested"></a>
+</h3>
+<p>Extreme vertices define geometry. The optimal set of experimental
+runs depends on the intended model and criterion.</p>
+<p>See Extended Vignette 25.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-pseudocomponents-as-the-final-formulation">32. Treating pseudocomponents as the final formulation<a class="anchor" aria-label="anchor" href="#treating-pseudocomponents-as-the-final-formulation"></a>
+</h3>
+<p>Always translate final recipes back to the original components.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="adding-constraints-after-observing-outcomes">33. Adding constraints after observing outcomes<a class="anchor" aria-label="anchor" href="#adding-constraints-after-observing-outcomes"></a>
+</h3>
+<p>Post-outcome restriction of the design region can introduce selective
+interpretation. Feasibility constraints should be defined from
+scientific, operational, safety, or economic knowledge whenever possible
+before response analysis.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ignoring-units">34. Ignoring units<a class="anchor" aria-label="anchor" href="#ignoring-units"></a>
+</h3>
+<p>If one dataset records proportions and another percentages, a valid
+mixture can appear invalid numerically. Use <code>total</code> and
+<code>units</code> consistently and document any conversion.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="assuming-a-nonempty-region-is-informative-enough">35. Assuming a nonempty region is informative enough<a class="anchor" aria-label="anchor" href="#assuming-a-nonempty-region-is-informative-enough"></a>
+</h3>
+<p>A region can be feasible but nearly degenerate. Evaluate spread and
+design quality before committing resources.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--function-selection-guide">Part XII. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xii--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Question</th>
+<th align="left">Function</th>
+<th align="left">Why</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">What are my components and bounds?</td>
+<td align="left"><code><a href="../reference/mix_spec.html">mix_spec()</a></code></td>
+<td align="left">authoritative mixture definition</td>
+</tr>
+<tr class="even">
+<td align="left">Do I have a local spherical/ellipsoidal/cuboidal
+region?</td>
+<td align="left"><code><a href="../reference/mix_region.html">mix_region()</a></code></td>
+<td align="left">region in independent coordinates</td>
+</tr>
+<tr class="odd">
+<td align="left">Where are the constrained corners?</td>
+<td align="left"><code><a href="../reference/mix_vertices.html">mix_vertices()</a></code></td>
+<td align="left">extreme-vertex enumeration</td>
+</tr>
+<tr class="even">
+<td align="left">I need independent coordinates</td>
+<td align="left"><code><a href="../reference/mix_transform.html">mix_transform()</a></code></td>
+<td align="left">maps to <code>q-1</code> dimensions</td>
+</tr>
+<tr class="odd">
+<td align="left">I need original proportions again</td>
+<td align="left"><code><a href="../reference/mix_inverse_transform.html">mix_inverse_transform()</a></code></td>
+<td align="left">reverses the transformation</td>
+</tr>
+<tr class="even">
+<td align="left">I have only lower bounds</td>
+<td align="left"><code>mix_pseudocomponents(type="L")</code></td>
+<td align="left">lower-bound pseudocomponents</td>
+</tr>
+<tr class="odd">
+<td align="left">I have upper bounds</td>
+<td align="left"><code>mix_pseudocomponents(type="U")</code></td>
+<td align="left">upper-bound pseudocomponents</td>
+</tr>
+<tr class="even">
+<td align="left">One component is a natural remainder</td>
+<td align="left"><code><a href="../reference/mix_reparameterize.html">mix_reparameterize()</a></code></td>
+<td align="left">slack-variable representation</td>
+</tr>
+<tr class="odd">
+<td align="left">I have major and minor groups</td>
+<td align="left"><code><a href="../reference/mix_multiple_lattice.html">mix_multiple_lattice()</a></code></td>
+<td align="left">multiple-lattice geometry</td>
+</tr>
+<tr class="even">
+<td align="left">Components belong to categories</td>
+<td align="left"><code><a href="../reference/mix_categorized_design.html">mix_categorized_design()</a></code></td>
+<td align="left">grouped component design</td>
+</tr>
+<tr class="odd">
+<td align="left">I need the design criterion</td>
+<td align="left">Extended Vignette 25</td>
+<td align="left">avoids duplicating optimal-design theory here</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--minimum-geometry-reporting-checklist">Part XIII. Minimum geometry reporting checklist<a class="anchor" aria-label="anchor" href="#part-xiii--minimum-geometry-reporting-checklist"></a>
+</h2>
+<p>Before a mixture experiment is designed, document:</p>
+<ul class="task-list">
+<li><label><input type="checkbox">component names;</label></li>
+<li><label><input type="checkbox">physical units;</label></li>
+<li><label><input type="checkbox">fixed total;</label></li>
+<li><label><input type="checkbox">lower bounds;</label></li>
+<li><label><input type="checkbox">upper bounds;</label></li>
+<li><label><input type="checkbox">general inequalities;</label></li>
+<li><label><input type="checkbox">equality restrictions;</label></li>
+<li><label><input type="checkbox">origin of each
+restriction;</label></li>
+<li><label><input type="checkbox">whether constraints were
+pre-specified;</label></li>
+<li><label><input type="checkbox">feasible extreme
+vertices;</label></li>
+<li><label><input type="checkbox">effective dimension;</label></li>
+<li><label><input type="checkbox">evidence of a narrow or nearly
+degenerate region;</label></li>
+<li><label><input type="checkbox">pseudocomponent transformation, if
+used;</label></li>
+<li><label><input type="checkbox">center of independent coordinates,
+if nondefault;</label></li>
+<li><label><input type="checkbox">local region shape, if
+sphere/ellipsoid/cuboid;</label></li>
+<li><label><input type="checkbox">major/minor or category grouping
+rules;</label></li>
+<li><label><input type="checkbox">versioned <code>mix_spec</code>
+object;</label></li>
+<li><label><input type="checkbox">audit trail;</label></li>
+<li><label><input type="checkbox">final formulation results translated
+back to original components.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--minimal-reusable-script">Appendix A. Minimal reusable script<a class="anchor" aria-label="anchor" href="#appendix-a--minimal-reusable-script"></a>
+</h2>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">V</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-7</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">V</span><span class="op">$</span><span class="va">A</span> <span class="op">+</span> <span class="va">V</span><span class="op">$</span><span class="va">B</span> <span class="op">&lt;=</span> <span class="fl">0.75</span> <span class="op">+</span> <span class="fl">1e-7</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">V</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">Z</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V_back</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_inverse_transform.html">mix_inverse_transform</a></span><span class="op">(</span><span class="va">Z</span>, <span class="va">sp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">V_back</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">D0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">D0</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_audit_trail.html">mix_audit_trail</a></span><span class="op">(</span><span class="va">D0</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-the-other-extended-vignettes">Appendix B. Boundary with the other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-the-other-extended-vignettes"></a>
+</h2>
+<p>This vignette deliberately does <strong>not</strong> provide full
+treatments of:</p>
+<ul>
+<li>D/A/I/G/E/T/Alias/Bayesian optimality;</li>
+<li>FDS, VDG, IMSE, and genetic search;</li>
+<li>Scheffé and alternative response models;</li>
+<li>mixture-process experimental structures;</li>
+<li>response optimization;</li>
+<li>uncertainty of the optimum;</li>
+<li>multiple-response desirability;</li>
+<li>sequential Bayesian optimization;</li>
+<li>publication graphics beyond geometric inspection;</li>
+<li>package validation and release engineering.</li>
+</ul>
+<p>Those topics are owned by Extended Vignettes 25 through 33.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>The feasible region is part of the scientific hypothesis. It is not a
+plotting convenience and not a minor preprocessing detail.</p>
+<p>A rigorous mixture analysis begins by making the region explicit:</p>
+<p><strong>components -&gt; total -&gt; bounds -&gt; linear constraints
+-&gt; extreme vertices -&gt; independent-coordinate geometry -&gt;
+design.</strong></p>
+<p>Only after that sequence is defensible should model fitting and
+optimization begin.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-geometry-laboratories">Appendix C. Advanced geometry laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-geometry-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-diagnose-an-almost-degenerate-feasible-region">C1. Laboratory: diagnose an almost-degenerate feasible region<a class="anchor" aria-label="anchor" href="#c1--laboratory-diagnose-an-almost-degenerate-feasible-region"></a>
+</h3>
+<div class="section level4">
+<h4 id="objective">Objective<a class="anchor" aria-label="anchor" href="#objective"></a>
+</h4>
+<p>Learn to distinguish a region that is merely constrained from one
+that has too little geometric width to support a rich response
+surface.</p>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_thin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.45</span>, <span class="fl">0.45</span>, <span class="fl">0.00</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.55</span>, <span class="fl">0.55</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V_thin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp_thin</span><span class="op">)</span></span>
+<span><span class="va">V_thin</span></span>
+<span></span>
+<span><span class="va">Z_thin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_transform.html">mix_transform</a></span><span class="op">(</span><span class="va">V_thin</span>, <span class="va">sp_thin</span><span class="op">)</span></span>
+<span><span class="va">Z_thin</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="tasks">Tasks<a class="anchor" aria-label="anchor" href="#tasks"></a>
+</h4>
+<ol style="list-style-type: decimal">
+<li>Confirm that every vertex sums to one.</li>
+<li>Compute the range of every independent coordinate.</li>
+<li>Compare those ranges with the full-simplex ranges.</li>
+<li>Explain why a high-order model may be numerically estimable in
+theory yet scientifically fragile in this region.</li>
+<li>Propose two design responses: simplify the model or, if
+scientifically allowed, broaden the formulation region.</li>
+</ol>
+</div>
+<div class="section level4">
+<h4 id="interpretation-2">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-2"></a>
+</h4>
+<p>A thin feasible region is not an error. It may accurately represent a
+manufacturing or safety window. The correct response is not to relax
+constraints automatically. Instead, recognize that only limited
+directions of compositional change are experimentally available. This
+limits what the data can reveal about curvature and interactions.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-compare-original-coordinates-and-l-pseudocomponents">C2. Laboratory: compare original coordinates and
+L-pseudocomponents<a class="anchor" aria-label="anchor" href="#c2--laboratory-compare-original-coordinates-and-l-pseudocomponents"></a>
+</h3>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spL</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.10</span>, <span class="fl">0.10</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.20</span>, <span class="fl">0.30</span>, <span class="fl">0.50</span>, <span class="fl">0.60</span><span class="op">)</span>,</span>
+<span>  B <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.30</span>, <span class="fl">0.30</span>, <span class="fl">0.20</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  C <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.50</span>, <span class="fl">0.40</span>, <span class="fl">0.30</span>, <span class="fl">0.30</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">spL</span>, type <span class="op">=</span> <span class="st">"L"</span><span class="op">)</span></span>
+<span><span class="va">Z</span></span>
+<span></span>
+<span><span class="va">X_back</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents</a></span><span class="op">(</span><span class="va">Z</span>, <span class="va">spL</span>, type <span class="op">=</span> <span class="st">"L"</span>, inverse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">X_back</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="tasks-1">Tasks<a class="anchor" aria-label="anchor" href="#tasks-1"></a>
+</h4>
+<ul>
+<li>Verify that rows of <code>Z</code> sum to one.</li>
+<li>Explain why A = 0.20 becomes zero in the transformed system.</li>
+<li>Describe what a pure pseudocomponent point means in the original
+formulation.</li>
+<li>Write the transformation equation in the methods section using the
+actual lower bounds.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="teaching-point">Teaching point<a class="anchor" aria-label="anchor" href="#teaching-point"></a>
+</h4>
+<p>Pseudocomponents can make a lower-bounded region look like a standard
+simplex, but the scientific formulation remains constrained. A vertex in
+pseudocomponent space does not necessarily correspond to a pure original
+ingredient.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-active-constraints-at-a-predicted-optimum">C3. Laboratory: active constraints at a predicted optimum<a class="anchor" aria-label="anchor" href="#c3--laboratory-active-constraints-at-a-predicted-optimum"></a>
+</h3>
+<p>This laboratory prepares the reader for Extended Vignette 29 without
+re-teaching optimization.</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_act</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.10</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.70</span>, <span class="fl">0.70</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.75</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp_act</span><span class="op">)</span></span>
+<span><span class="va">V</span></span></code></pre></div>
+<p>Choose any vertex and identify which bounds or inequalities are
+active. Then explain how an optimum at that vertex should be
+reported:</p>
+<blockquote>
+<p>The fitted optimum occurs at the intersection of the upper/combined
+formulation restrictions, so its location is conditional on the imposed
+feasible region.</p>
+</blockquote>
+<p>The purpose of this exercise is to train the analyst to interpret
+boundaries scientifically rather than treating them as invisible
+numerical constraints.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-categorized-mixture-geometry">C4. Laboratory: categorized mixture geometry<a class="anchor" aria-label="anchor" href="#c4--laboratory-categorized-mixture-geometry"></a>
+</h3>
+<p>Imagine two groups:</p>
+<ul>
+<li>organic components: O1, O2;</li>
+<li>mineral components: M1, M2, M3.</li>
+</ul>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cats</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  organic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"O1"</span>, <span class="st">"O2"</span><span class="op">)</span>,</span>
+<span>  mineral <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"M1"</span>, <span class="st">"M2"</span>, <span class="st">"M3"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp_cat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">cats</span>, use.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Dcat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_categorized_design.html">mix_categorized_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_cat</span>,</span>
+<span>  categories <span class="op">=</span> <span class="va">cats</span>,</span>
+<span>  category_totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>organic <span class="op">=</span> <span class="fl">0.60</span>, mineral <span class="op">=</span> <span class="fl">0.40</span><span class="op">)</span>,</span>
+<span>  between_degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  within_degree <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">240401</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">Dcat</span><span class="op">$</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="questions">Questions<a class="anchor" aria-label="anchor" href="#questions"></a>
+</h4>
+<ul>
+<li>What does it mean to hold the organic category at 0.60?</li>
+<li>Which variation occurs within categories?</li>
+<li>Which variation occurs between category totals?</li>
+<li>Why should the grouped design structure not be confused with a
+specific historical categorized-component coefficient
+transformation?</li>
+</ul>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--geometry-troubleshooting-matrix">Appendix D. Geometry troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--geometry-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely cause</th>
+<th align="left">Scientific response</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code><a href="../reference/mix_vertices.html">mix_vertices()</a></code> returns no feasible
+vertices</td>
+<td align="left">inconsistent bounds/constraints</td>
+<td align="left">audit constraints and units before design</td>
+</tr>
+<tr class="even">
+<td align="left">many vertices differ only numerically</td>
+<td align="left">near-degenerate region/tolerance issue</td>
+<td align="left">inspect independent-coordinate spread and
+tolerance</td>
+</tr>
+<tr class="odd">
+<td align="left">inverse transformation slightly misses total</td>
+<td align="left">floating-point accumulation</td>
+<td align="left">compare with declared tolerance; do not round
+prematurely</td>
+</tr>
+<tr class="even">
+<td align="left">pseudocomponents contain negative values</td>
+<td align="left">input mixture violates bounds</td>
+<td align="left">validate original data rather than clipping
+silently</td>
+</tr>
+<tr class="odd">
+<td align="left">U-pseudocomponent transformation unstable</td>
+<td align="left">upper bounds nearly collapse region</td>
+<td align="left">inspect feasibility and effective width</td>
+</tr>
+<tr class="even">
+<td align="left">categorized design becomes enormous</td>
+<td align="left">too many categories/degrees</td>
+<td align="left">simplify degrees or redesign scientifically</td>
+</tr>
+<tr class="odd">
+<td align="left">plotted triangle looks large but feasible polygon
+tiny</td>
+<td align="left">constraints occupy narrow subregion</td>
+<td align="left">label feasible polygon explicitly</td>
+</tr>
+<tr class="even">
+<td align="left">fitted model later shows severe collinearity</td>
+<td align="left">region lacks independent spread</td>
+<td align="left">simplify model or redesign; do not blame coefficients
+alone</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-geometry-exercises">Appendix E. Guided geometry exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-geometry-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--bound-feasibility">Exercise 1. Bound feasibility<a class="anchor" aria-label="anchor" href="#exercise-1--bound-feasibility"></a>
+</h4>
+<p>Create a four-component system whose lower bounds sum to 0.95.
+Explain how little total mixture mass remains free and why a high-degree
+lattice would be inefficient.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--impossible-system">Exercise 2. Impossible system<a class="anchor" aria-label="anchor" href="#exercise-2--impossible-system"></a>
+</h4>
+<p>Construct lower bounds that sum to 1.05. Predict what should happen
+before running the code, then verify package behavior. Explain why an
+informative error is preferable to silently rescaling the bounds.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--equality-dimension">Exercise 3. Equality dimension<a class="anchor" aria-label="anchor" href="#exercise-3--equality-dimension"></a>
+</h4>
+<p>Start with four components and impose <code>A + B = 0.50</code>.
+Determine the effective number of freely varying dimensions after
+considering both the mixture total and the additional equality.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--active-set-reasoning">Exercise 4. Active-set reasoning<a class="anchor" aria-label="anchor" href="#exercise-4--active-set-reasoning"></a>
+</h4>
+<p>For a three-component region with one general inequality, identify
+the constraints active at every extreme vertex and classify each as
+lower bound, upper bound, or general inequality.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--center-choice">Exercise 5. Center choice<a class="anchor" aria-label="anchor" href="#exercise-5--center-choice"></a>
+</h4>
+<p>Transform the same set of mixtures using the default center and a
+commercial reference formulation. Explain which numerical values change
+and which scientific compositions do not.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--local-sphere">Exercise 6. Local sphere<a class="anchor" aria-label="anchor" href="#exercise-6--local-sphere"></a>
+</h4>
+<p>Define a spherical local region around a current formulation. Explain
+why the sphere is defined in independent coordinates rather than
+directly using three ordinary component axes.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--ellipsoid">Exercise 7. Ellipsoid<a class="anchor" aria-label="anchor" href="#exercise-7--ellipsoid"></a>
+</h4>
+<p>Create an ellipsoid that allows more variation in one independent
+direction than another. Propose an operational reason for this
+anisotropy.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--pseudocomponent-interpretation">Exercise 8. Pseudocomponent interpretation<a class="anchor" aria-label="anchor" href="#exercise-8--pseudocomponent-interpretation"></a>
+</h4>
+<p>For lower bounds A = 0.20, B = 0.10, C = 0.10, calculate manually the
+pseudocomponents for A = 0.50, B = 0.20, C = 0.30 and compare with
+<code><a href="../reference/mix_pseudocomponents.html">mix_pseudocomponents()</a></code>.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--slack-component">Exercise 9. Slack component<a class="anchor" aria-label="anchor" href="#exercise-9--slack-component"></a>
+</h4>
+<p>Explain why choosing a chemically inert carrier as slack may be more
+interpretable than choosing the biologically active component, even if
+fitted values are unchanged under a reparameterization.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--majorminor-system">Exercise 10. Major/minor system<a class="anchor" aria-label="anchor" href="#exercise-10--majorminor-system"></a>
+</h4>
+<p>Design a hypothetical fertilizer blend with two major macronutrient
+carriers and three minor micronutrient carriers. Define plausible major
+totals and explain why one global lattice degree may be inefficient.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--category-design">Exercise 11. Category design<a class="anchor" aria-label="anchor" href="#exercise-11--category-design"></a>
+</h4>
+<p>Create three categories with two components each. Discuss how
+category totals and within-category composition answer different
+scientific questions.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A manuscript reports only “a three-component simplex design was used”
+although every component had bounds. Write a reviewer comment requesting
+the missing geometric information needed for reproducibility.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-geometry-audit">Appendix F. Reviewer-style geometry audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-geometry-audit"></a>
+</h2>
+<p>A reviewer or thesis examiner should be able to answer all of the
+following from the methods section:</p>
+<ol style="list-style-type: decimal">
+<li>What is the mixture total?</li>
+<li>What are the original component units?</li>
+<li>What are the exact lower and upper bounds?</li>
+<li>Are there combined-component constraints?</li>
+<li>Are any equalities imposed beyond the total?</li>
+<li>Is the full simplex or only a subregion scientifically
+admissible?</li>
+<li>Were constraints declared before responses were analyzed?</li>
+<li>Can the extreme vertices be reconstructed?</li>
+<li>Were pseudocomponents used, and were results back-transformed?</li>
+<li>Does the effective dimension support the fitted model?</li>
+<li>Are category/major-minor structures described clearly?</li>
+<li>Are all reported recommended formulations inside the region?</li>
+</ol>
+<p>If any answer is no, the geometry is incompletely documented.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="full-simplex">Full simplex<a class="anchor" aria-label="anchor" href="#full-simplex"></a>
+</h4>
+<blockquote>
+<p>The formulation consisted of three nonnegative component proportions
+constrained to sum to one. No additional component bounds were imposed,
+so the experimental region was the complete two-dimensional simplex.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="bounded-region">Bounded region<a class="anchor" aria-label="anchor" href="#bounded-region"></a>
+</h4>
+<blockquote>
+<p>Component-specific lower and upper limits restricted the admissible
+formulations to a convex subregion of the simplex. All design,
+prediction, and optimization steps were performed within this declared
+feasible region.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="general-linear-restriction">General linear restriction<a class="anchor" aria-label="anchor" href="#general-linear-restriction"></a>
+</h4>
+<blockquote>
+<p>In addition to individual bounds, the combined fraction of A and B
+was constrained to be no greater than 0.75. The resulting extreme
+vertices were enumerated before design generation to verify
+feasibility.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="pseudocomponents">Pseudocomponents<a class="anchor" aria-label="anchor" href="#pseudocomponents"></a>
+</h4>
+<blockquote>
+<p>Lower-bound pseudocomponents were used as an internal coordinate
+transformation. Final formulations and all scientific interpretations
+were reported on the original component scale.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="narrow-region">Narrow region<a class="anchor" aria-label="anchor" href="#narrow-region"></a>
+</h4>
+<blockquote>
+<p>The feasible region occupied a narrow subset of the simplex, limiting
+independent compositional variation. Consequently, model complexity and
+design conditioning were assessed explicitly before inferential
+interpretation.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-geometry-case-bank">Appendix H. Applied geometry case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-geometry-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--fertilizer-carrier-with-mandatory-micronutrient-fraction">H1. Fertilizer carrier with mandatory micronutrient fraction<a class="anchor" aria-label="anchor" href="#h1--fertilizer-carrier-with-mandatory-micronutrient-fraction"></a>
+</h3>
+<p>A fertilizer granule contains two macronutrient carriers and one
+micronutrient premix. The premix cannot fall below a regulatory minimum,
+while the first carrier has an upper limit imposed by solubility. The
+correct first analysis is not a quadratic regression. It is a
+feasible-region audit. Encode the individual limits in
+<code><a href="../reference/mix_spec.html">mix_spec()</a></code>, enumerate vertices, and verify that the
+candidate formulations do not collapse into a narrow edge. If a later
+optimum lands at the micronutrient minimum, the interpretation must
+state that the selected composition is conditional on the regulatory
+floor. A recommendation to reduce the premix below that floor would be
+extrapolation outside the admissible problem rather than a statistical
+discovery.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--pesticide-blend-with-combined-active-ingredient-ceiling">H2. Pesticide blend with combined active-ingredient ceiling<a class="anchor" aria-label="anchor" href="#h2--pesticide-blend-with-combined-active-ingredient-ceiling"></a>
+</h3>
+<p>Suppose A and B are active ingredients and C is an adjuvant.
+Toxicological guidance imposes <code>A + B &lt;= 0.65</code>. This
+combined restriction can remove a large corner of the full simplex. A
+full triangular response plot remains a useful coordinate frame, but the
+admissible polygon must be shown clearly. The extreme vertices identify
+the most concentrated active combinations that can legally be tested.
+The eventual design should be generated inside this polygon. The design
+question belongs to Vignette 25, but the legality and geometry of the
+region are fixed here.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--potting-substrate-with-lower-bound-pseudocomponents">H3. Potting substrate with lower-bound pseudocomponents<a class="anchor" aria-label="anchor" href="#h3--potting-substrate-with-lower-bound-pseudocomponents"></a>
+</h3>
+<p>A substrate requires at least 25% structural material, 10% organic
+amendment, and 5% biochar. L-pseudocomponents can transform the
+remaining free fraction into a standard simplex. The transformed vertex
+corresponding to “100% pseudocomponent A” actually means “all free
+fraction allocated to A after all mandatory minima are already present.”
+This distinction should be explained in teaching materials because a
+pseudocomponent vertex is not a pure original material. Final tables
+should report the original component proportions, while pseudocomponents
+may be retained as internal design coordinates.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--nutrient-solution-around-a-commercial-reference-blend">H4. Nutrient solution around a commercial reference blend<a class="anchor" aria-label="anchor" href="#h4--nutrient-solution-around-a-commercial-reference-blend"></a>
+</h3>
+<p>A company wants to explore only a small neighborhood around its
+current nutrient formulation. A sphere or ellipsoid in independent
+coordinates can define a local region without breaking the sum
+constraint. An ellipsoid is preferable when larger movement is
+acceptable along one compositional contrast than another. For example,
+the nitrate/ammonium contrast may be allowed to vary widely while total
+organic-N substitution must remain close to the current product. The
+local region should be justified from process and agronomic knowledge,
+not chosen merely to create a well-conditioned model.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--categorized-components-in-organic-mineral-fertilizer">H5. Categorized components in organic-mineral fertilizer<a class="anchor" aria-label="anchor" href="#h5--categorized-components-in-organic-mineral-fertilizer"></a>
+</h3>
+<p>Suppose three organic ingredients and two mineral carriers are first
+considered within their categories, while the total organic fraction is
+fixed near 60%. <code><a href="../reference/mix_categorized_design.html">mix_categorized_design()</a></code> can create a
+grouped design geometry. The scientific report should distinguish
+between variation <strong>between category totals</strong> and variation
+<strong>within each category</strong>. If a historical double-Scheffé
+coefficient transformation is not part of the validated implementation,
+do not imply that the package reproduces it merely because the grouped
+design is available. The design object and the model parameterization
+are separate claims.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-geometry-review">Appendix I. Short-answer geometry review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-geometry-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Why are there only <code>q - 1</code> independent
+coordinates?</strong> Because the component total supplies one exact
+linear constraint.</li>
+<li>
+<strong>What is an extreme vertex?</strong> A corner of the feasible
+convex region created by simultaneously active constraints.</li>
+<li>
+<strong>Can a feasible region still be statistically poor?</strong>
+Yes. It can be extremely narrow or nearly lower-dimensional.</li>
+<li>
+<strong>Do pseudocomponents change the physical recipe?</strong>
+No. They change coordinates and must be back-transformed.</li>
+<li>
+<strong>When is a slack component useful?</strong> When one
+ingredient is naturally the balancing remainder.</li>
+<li>
+<strong>Does a full ternary triangle mean every point is
+allowed?</strong> Not when bounds or general restrictions define a
+smaller feasible polygon.</li>
+<li>
+<strong>Why record units?</strong> A proportion/percentage mismatch
+can invalidate all constraint checks.</li>
+<li>
+<strong>Can constraints be chosen after seeing response
+data?</strong> They should normally be pre-specified from independent
+scientific or operational requirements.</li>
+<li>
+<strong>What should happen before optimal design?</strong>
+Feasibility and vertices should be confirmed.</li>
+<li>
+<strong>What should be reported from a transformed system?</strong>
+Both the transformation definition and original-scale final
+compositions.</li>
+</ol>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

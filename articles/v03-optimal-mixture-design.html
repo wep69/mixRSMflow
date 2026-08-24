@@ -60,8 +60,1828 @@
 
     
     
-<p><strong>Extended tutorial not found.</strong></p>
-  </main>
+<div class="section level2">
+<h2 id="mixrsmflow-optimal-mixture-design-prediction-variance-and-design-quality">mixRSMflow: Optimal Mixture Design, Prediction Variance, and Design
+Quality<a class="anchor" aria-label="anchor" href="#mixrsmflow-optimal-mixture-design-prediction-variance-and-design-quality"></a>
+</h2>
+<p><strong>Extended instructional vignette</strong><br><strong>Package:</strong> <code>mixRSMflow</code><br><strong>Version targeted:</strong> <code>0.1.0.9000</code><br><strong>Extended vignette:</strong> 25<br><strong>Format:</strong> Markdown source only<br><strong>Primary ownership:</strong> optimal-design criteria,
+exchange/GA/hybrid search, prediction variance, FDS, VDG, IMSE,
+rotatability, model-robust design, Bayesian design criteria, sequential
+design augmentation for information quality<br><strong>Companion material:</strong> Extended Vignette 24 for mixture
+geometry; <code>09-optimal-design.Rmd</code>,
+<code>17-sequential-design.Rmd</code></p>
+<blockquote>
+<p>This document is intentionally supplied as <code>.md</code>. It is an
+extended teaching monograph. Stochastic examples use explicit seeds.
+Final numerical performance must be confirmed in the user’s local R
+environment.</p>
+</blockquote>
+<blockquote>
+<p><strong>Scope boundary.</strong> This extended vignette owns the
+topic named in its title. Closely related methods that belong to another
+extended vignette are referenced rather than re-taught. This separation
+is deliberate so that the extended documentation remains deep without
+becoming repetitive.</p>
+</blockquote>
+<hr>
+<div class="section level3">
+<h3 id="why-optimal-design-is-a-scientific-choice-not-an-algorithm-contest">1. Why optimal design is a scientific choice, not an algorithm
+contest<a class="anchor" aria-label="anchor" href="#why-optimal-design-is-a-scientific-choice-not-an-algorithm-contest"></a>
+</h3>
+<p>A constrained mixture region can be irregular, narrow, or strongly
+asymmetric. Classical simplex designs were developed for highly
+structured regions and model families. When the feasible region departs
+from the full simplex, a named classical design can become inefficient,
+unbalanced, or impossible.</p>
+<p>Optimal design reverses the problem. Rather than beginning with a
+named geometric design and asking which model it can support, the
+researcher declares:</p>
+<ol style="list-style-type: decimal">
+<li>the feasible region;</li>
+<li>the model basis;</li>
+<li>the number of runs;</li>
+<li>the scientific criterion;</li>
+<li>the candidate or evaluation region;</li>
+<li>the search algorithm.</li>
+</ol>
+<p>The algorithm then searches for a design that scores well under that
+criterion.</p>
+<p>The central principle of this vignette is:</p>
+<p><strong>The optimality criterion should follow the scientific
+estimand. D-optimality is not a universal default.</strong></p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="learning-objectives">2. Learning objectives<a class="anchor" aria-label="anchor" href="#learning-objectives"></a>
+</h3>
+<p>After this vignette, the reader should be able to:</p>
+<ol style="list-style-type: decimal">
+<li>construct and inspect the model matrix of a candidate mixture
+design;</li>
+<li>distinguish exact run selection from the continuous theoretical idea
+of optimal design;</li>
+<li>explain D-, A-, I-, G-, E-, T-, Alias-, Bayesian D-, and Bayesian
+I-oriented criteria;</li>
+<li>select a criterion according to parameter, prediction,
+discrimination, aliasing, or prior-information goals;</li>
+<li>generate exchange, genetic-algorithm, and hybrid optimal
+designs;</li>
+<li>use repeated random starts and explicit seeds;</li>
+<li>evaluate rank, conditioning, leverage, average prediction variance,
+and maximum prediction variance;</li>
+<li>interpret Fraction of Design Space curves;</li>
+<li>interpret Variance Dispersion Graphs;</li>
+<li>assess rotatability in mixture-independent coordinates;</li>
+<li>use IMSE to study variance/bias trade-offs when the fitted model may
+be simpler than the true surface;</li>
+<li>construct T- or Alias-oriented designs with explicit alternative
+model spaces;</li>
+<li>incorporate prior precision through Bayesian criteria;</li>
+<li>use mean or worst-case objectives for model-robust design
+scenarios;</li>
+<li>augment an existing design to improve D, I, or G behavior;</li>
+<li>distinguish design-based sequential augmentation from
+response-adaptive optimization;</li>
+<li>report stochastic search settings and design diagnostics
+reproducibly.</li>
+</ol>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="function-map">3. Function map<a class="anchor" aria-label="anchor" href="#function-map"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th align="left">Task</th>
+<th align="left">Primary function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Standard design baseline</td>
+<td align="left"><code><a href="../reference/mix_design.html">mix_design()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Optimal design search</td>
+<td align="left"><code><a href="../reference/mix_optimal_design.html">mix_optimal_design()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Design diagnostics</td>
+<td align="left"><code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Integrated MSE</td>
+<td align="left"><code><a href="../reference/mix_imse.html">mix_imse()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Rotatability</td>
+<td align="left"><code><a href="../reference/mix_rotatability.html">mix_rotatability()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Simplex/region moments</td>
+<td align="left"><code><a href="../reference/mix_moments.html">mix_moments()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Add informative runs</td>
+<td align="left"><code><a href="../reference/mix_augment.html">mix_augment()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Inspect candidate model columns</td>
+<td align="left"><code><a href="../reference/mix_basis.html">mix_basis()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Plot design quality</td>
+<td align="left"><code><a href="../reference/mix_plot.html">mix_plot()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Record decisions</td>
+<td align="left"><code><a href="../reference/mix_audit_trail.html">mix_audit_trail()</a></code></td>
+</tr>
+</tbody>
+</table>
+<p>This vignette assumes the region already exists as a validated
+<code>mix_spec</code>. Bounds and extreme-vertex theory are owned by
+Extended Vignette 24.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-i--information-matrices-and-prediction-variance">Part I. Information matrices and prediction variance<a class="anchor" aria-label="anchor" href="#part-i--information-matrices-and-prediction-variance"></a>
+</h2>
+<div class="section level3">
+<h3 id="start-from-a-constrained-agronomic-formulation">4. Start from a constrained agronomic formulation<a class="anchor" aria-label="anchor" href="#start-from-a-constrained-agronomic-formulation"></a>
+</h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  components <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"OrganicN"</span>, <span class="st">"MineralN"</span>, <span class="st">"Carrier"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.75</span>, <span class="fl">0.75</span>, <span class="fl">0.80</span><span class="op">)</span>,</span>
+<span>  A <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  b <span class="op">=</span> <span class="fl">0.85</span>,</span>
+<span>  dir <span class="op">=</span> <span class="st">"&lt;="</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_vertices.html">mix_vertices</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span></code></pre></div>
+<p>Suppose the scientific objective is to support a Scheffé quadratic
+response surface.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">candidate_reference</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The design problem is now explicit: choose a finite set of runs from
+the feasible region that estimates or predicts the quadratic surface
+efficiently.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="model-matrix">5. Model matrix<a class="anchor" aria-label="anchor" href="#model-matrix"></a>
+</h3>
+<p>For a quadratic three-component Scheffé model,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>1</mn></msub></mtd><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>2</mn></msub></mtd><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>3</mn></msub></mtd><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>1</mn></msub><msub><mi>x</mi><mn>2</mn></msub></mtd><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>1</mn></msub><msub><mi>x</mi><mn>3</mn></msub></mtd><mtd columnalign="center" style="text-align: center"><msub><mi>x</mi><mn>2</mn></msub><msub><mi>x</mi><mn>3</mn></msub></mtd></mtr></mtable><mo stretchy="true" form="postfix">]</mo></mrow><mi>T</mi></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">
+f(x)=
+\begin{bmatrix}
+x_1 &amp; x_2 &amp; x_3 &amp; x_1x_2 &amp; x_1x_3 &amp; x_2x_3
+\end{bmatrix}^{T}.
+</annotation></semantics></math></p>
+<p>For design points <code>x_1, ..., x_n</code>, the rows of the model
+matrix are <code>f(x_i)^T</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_basis.html">mix_basis</a></span><span class="op">(</span></span>
+<span>  <span class="va">candidate_reference</span><span class="op">$</span><span class="va">data</span>,</span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span></code></pre></div>
+<p>For ordinary equal-variance linear-model calculations, the
+information matrix is proportional to</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><msup><mi>X</mi><mi>T</mi></msup><mi>X</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">
+M=X^TX.
+</annotation></semantics></math></p>
+<p>The covariance of estimated coefficients is proportional to
+<code>M^-1</code> when the matrix is full rank.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="prediction-variance">6. Prediction variance<a class="anchor" aria-label="anchor" href="#prediction-variance"></a>
+</h3>
+<p>For a candidate mixture <code>x</code>, model-based prediction
+variance is proportional to</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>v</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><msup><mo stretchy="false" form="postfix">)</mo><mi>T</mi></msup><mo stretchy="false" form="prefix">(</mo><msup><mi>X</mi><mi>T</mi></msup><mi>X</mi><msup><mo stretchy="false" form="postfix">)</mo><mrow><mi>−</mi><mn>1</mn></mrow></msup><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">
+v(x)=f(x)^T(X^TX)^{-1}f(x).
+</annotation></semantics></math></p>
+<p>Different optimality criteria summarize different aspects of this
+matrix or of <code>v(x)</code>.</p>
+<p>This is why a design can be excellent for coefficient precision and
+less attractive for prediction, or vice versa.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ii--optimality-criteria">Part II. Optimality criteria<a class="anchor" aria-label="anchor" href="#part-ii--optimality-criteria"></a>
+</h2>
+<div class="section level3">
+<h3 id="d-optimality">7. D-optimality<a class="anchor" aria-label="anchor" href="#d-optimality"></a>
+</h3>
+<p>D-optimality seeks to maximize the determinant of the information
+matrix, equivalently minimizing the generalized volume of the
+coefficient covariance ellipsoid.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_D</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"D"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25001</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="appropriate-scientific-emphasis">Appropriate scientific emphasis<a class="anchor" aria-label="anchor" href="#appropriate-scientific-emphasis"></a>
+</h4>
+<p>Use D-oriented design when the primary concern is precise estimation
+of the complete parameter vector under the declared model.</p>
+</div>
+<div class="section level4">
+<h4 id="limitation">Limitation<a class="anchor" aria-label="anchor" href="#limitation"></a>
+</h4>
+<p>D-optimality does not directly minimize average or worst-case
+prediction variance over the feasible region.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="a-optimality">8. A-optimality<a class="anchor" aria-label="anchor" href="#a-optimality"></a>
+</h3>
+<p>A-optimality focuses on the trace of the inverse information
+matrix.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_A</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"A"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25002</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>It emphasizes average marginal coefficient variance on the scale of
+the selected parameterization.</p>
+<p>Because parameterization matters, interpret A-optimality with more
+caution when comparing bases with very different scaling.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="i-optimality">9. I-optimality<a class="anchor" aria-label="anchor" href="#i-optimality"></a>
+</h3>
+<p>I-optimality minimizes integrated or average prediction variance over
+an evaluation region.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">15</span>,</span>
+<span>  random_candidates <span class="op">=</span> <span class="fl">2000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25003</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="appropriate-scientific-emphasis-1">Appropriate scientific emphasis<a class="anchor" aria-label="anchor" href="#appropriate-scientific-emphasis-1"></a>
+</h4>
+<p>Use I-optimality when the response surface will be used to predict
+across the feasible region or when optimization depends on a
+well-estimated surface throughout that region.</p>
+<p>This is often a strong default for formulation optimization, but it
+is still a goal-dependent choice rather than a universal rule.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="g-optimality">10. G-optimality<a class="anchor" aria-label="anchor" href="#g-optimality"></a>
+</h3>
+<p>G-optimality targets the maximum prediction variance.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_G</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25004</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This is attractive when poor prediction anywhere in the feasible
+region is unacceptable.</p>
+<p>Examples include safety envelopes, formulation specifications, and
+experiments intended to guarantee uniformly controlled uncertainty.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="e-optimality">11. E-optimality<a class="anchor" aria-label="anchor" href="#e-optimality"></a>
+</h3>
+<p>E-optimality emphasizes the smallest eigenvalue of the information
+matrix.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_E</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"E"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25005</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>It protects the weakest estimable direction in parameter space.</p>
+<p>This can be useful when near-singularity is a concern.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="t-optimality-for-model-discrimination">12. T-optimality for model discrimination<a class="anchor" aria-label="anchor" href="#t-optimality-for-model-discrimination"></a>
+</h3>
+<p>Suppose the current candidate model is quadratic but an important
+alternative is special cubic.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_T</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"T"</span>,</span>
+<span>  alternative_model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25006</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>T-oriented design is a different scientific problem from ordinary
+coefficient precision. The purpose is to create runs where competing
+model spaces produce distinguishable predictions.</p>
+<div class="section level4">
+<h4 id="reporting-rule">Reporting rule<a class="anchor" aria-label="anchor" href="#reporting-rule"></a>
+</h4>
+<p>State both the null/base model and the alternative model. A phrase
+such as “T-optimal design” is incomplete without the discrimination
+target.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="alias-oriented-design">13. Alias-oriented design<a class="anchor" aria-label="anchor" href="#alias-oriented-design"></a>
+</h3>
+<p>If the fitted model is quadratic but higher-order terms may exist, an
+alias criterion can seek a design with less confounding between the
+fitted and omitted term spaces.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_alias</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"Alias"</span>,</span>
+<span>  alias_model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25007</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This can be useful for screening-like settings where effect sparsity
+is plausible but complete higher-order fitting is unaffordable.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="bayesian-d-and-bayesian-i-criteria">14. Bayesian D and Bayesian I criteria<a class="anchor" aria-label="anchor" href="#bayesian-d-and-bayesian-i-criteria"></a>
+</h3>
+<p>Prior parameter information can be incorporated through a prior
+precision matrix.</p>
+<p>For a three-component quadratic Scheffé basis there are six
+columns.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">6</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_BD</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"BayesD"</span>,</span>
+<span>  prior_precision <span class="op">=</span> <span class="va">P</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25008</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">d_BI</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"BayesI"</span>,</span>
+<span>  prior_precision <span class="op">=</span> <span class="va">P</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25009</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation"></a>
+</h4>
+<p>The prior precision modifies the design criterion. This does not
+automatically make the subsequent response analysis Bayesian.</p>
+<p>Document the origin and scale of prior information. A diagonal matrix
+chosen solely for numerical convenience is not substantive prior
+knowledge.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iii--search-algorithms">Part III. Search algorithms<a class="anchor" aria-label="anchor" href="#part-iii--search-algorithms"></a>
+</h2>
+<div class="section level3">
+<h3 id="exchange-search">15. Exchange search<a class="anchor" aria-label="anchor" href="#exchange-search"></a>
+</h3>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_ex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"exchange"</span>,</span>
+<span>  starts <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25101</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Exchange search iteratively replaces design points with candidates
+that improve the criterion.</p>
+<div class="section level4">
+<h4 id="strengths">Strengths<a class="anchor" aria-label="anchor" href="#strengths"></a>
+</h4>
+<ul>
+<li>transparent design-point replacement logic;</li>
+<li>strong local refinement;</li>
+<li>often fast on moderate candidate sets.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="risk">Risk<a class="anchor" aria-label="anchor" href="#risk"></a>
+</h4>
+<p>It can depend on the starting design when the criterion landscape is
+irregular.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="genetic-algorithm">16. Genetic algorithm<a class="anchor" aria-label="anchor" href="#genetic-algorithm"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_ga</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"ga"</span>,</span>
+<span>  population <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  generations <span class="op">=</span> <span class="fl">80</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25102</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="strengths-1">Strengths<a class="anchor" aria-label="anchor" href="#strengths-1"></a>
+</h4>
+<ul>
+<li>broader stochastic exploration;</li>
+<li>useful in irregular regions;</li>
+<li>less dependent on a single local exchange path.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="reporting-requirements">Reporting requirements<a class="anchor" aria-label="anchor" href="#reporting-requirements"></a>
+</h4>
+<p>State:</p>
+<ul>
+<li>seed;</li>
+<li>population size;</li>
+<li>generation count;</li>
+<li>candidate-set construction;</li>
+<li>criterion;</li>
+<li>number of selected runs;</li>
+<li>whether replicate selections were allowed.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="hybrid-ga-plus-exchange">17. Hybrid GA plus exchange<a class="anchor" aria-label="anchor" href="#hybrid-ga-plus-exchange"></a>
+</h3>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d_hybrid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  starts <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">40</span>,</span>
+<span>  population <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  generations <span class="op">=</span> <span class="fl">80</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25103</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The hybrid workflow combines broad stochastic search with local
+exchange refinement.</p>
+<p>It is a useful practical default when computation is affordable, but
+the result should still be compared across seeds or starts when design
+decisions are consequential.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="replicates-in-an-optimal-design">18. Replicates in an optimal design<a class="anchor" aria-label="anchor" href="#replicates-in-an-optimal-design"></a>
+</h3>
+<p>The argument</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">allow_replicates</span> <span class="op">=</span> <span class="cn">TRUE</span></span></code></pre></div>
+<p>permits a candidate point to appear more than once.</p>
+<p>Replicates can be scientifically valuable because they estimate pure
+error and can improve precision where the criterion favors repeated
+support.</p>
+<p>Do not automatically force all design points to be unique.
+Conversely, do not accept heavy replication if it leaves important parts
+of the region poorly supported for prediction.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-iv--design-evaluation">Part IV. Design evaluation<a class="anchor" aria-label="anchor" href="#part-iv--design-evaluation"></a>
+</h2>
+<div class="section level3">
+<h3 id="evaluate-all-candidate-designs-on-a-common-region">19. Evaluate all candidate designs on a common region<a class="anchor" aria-label="anchor" href="#evaluate-all-candidate-designs-on-a-common-region"></a>
+</h3>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ev_D</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">d_D</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ev_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">d_I</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ev_G</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">d_G</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use the same model, evaluation resolution, and feasible region for a
+fair comparison.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="rank-and-estimability">20. Rank and estimability<a class="anchor" aria-label="anchor" href="#rank-and-estimability"></a>
+</h3>
+<p>A design that does not have full rank for the intended model is not
+adequate for ordinary coefficient estimation.</p>
+<p>Inspect the evaluation object before comparing efficiency scores.</p>
+<p>A criterion value from a rank-deficient design should not be
+interpreted as meaningful parameter precision.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="conditioning">21. Conditioning<a class="anchor" aria-label="anchor" href="#conditioning"></a>
+</h3>
+<p>Condition number measures sensitivity of the linear system to
+perturbation and scaling.</p>
+<p>In a strongly constrained region, a quadratic model can be
+technically estimable but poorly conditioned.</p>
+<p>A large condition number suggests that:</p>
+<ul>
+<li>some coefficient combinations are weakly determined;</li>
+<li>small numerical or data perturbations may produce large coefficient
+changes;</li>
+<li>high-order interpretation may be unstable.</li>
+</ul>
+<p>Prediction can still be more stable than individual coefficients, so
+conditioning should be interpreted jointly with prediction-variance
+diagnostics.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="leverage-and-coverage">22. Leverage and coverage<a class="anchor" aria-label="anchor" href="#leverage-and-coverage"></a>
+</h3>
+<p>Leverage identifies design points with high influence on the fitted
+model matrix.</p>
+<p>High leverage is not automatically bad. Extreme vertices often have
+high leverage because they define the boundaries of the model space.</p>
+<p>Concern arises when:</p>
+<ul>
+<li>one point dominates a high-order term;</li>
+<li>the design lacks interior support;</li>
+<li>one accidental or hard-to-reproduce formulation becomes structurally
+indispensable.</li>
+</ul>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="prediction-variance-maps">23. Prediction-variance maps<a class="anchor" aria-label="anchor" href="#prediction-variance-maps"></a>
+</h3>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">ev_I</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"prediction_variance"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>A prediction-variance map shows where the design is weak or
+strong.</p>
+<p>Interpret the map relative to the actual feasible region. High
+variance in an impossible composition is irrelevant; high variance near
+the scientific target region is important.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-v--fraction-of-design-space">Part V. Fraction of Design Space<a class="anchor" aria-label="anchor" href="#part-v--fraction-of-design-space"></a>
+</h2>
+<div class="section level3">
+<h3 id="what-fds-means">24. What FDS means<a class="anchor" aria-label="anchor" href="#what-fds-means"></a>
+</h3>
+<p>For each evaluation point, compute prediction variance. The FDS curve
+summarizes the proportion of the feasible region with variance below a
+threshold.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ev_D</span>, type <span class="op">=</span> <span class="st">"fds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ev_I</span>, type <span class="op">=</span> <span class="st">"fds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ev_G</span>, type <span class="op">=</span> <span class="st">"fds"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="interpretation-1">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-1"></a>
+</h4>
+<p>A curve that lies farther toward low variance is generally preferable
+for prediction.</p>
+<p>FDS is especially useful because it shows the
+<strong>distribution</strong> of prediction quality, not only one
+average or maximum number.</p>
+</div>
+<div class="section level4">
+<h4 id="practical-comparison-questions">Practical comparison questions<a class="anchor" aria-label="anchor" href="#practical-comparison-questions"></a>
+</h4>
+<ul>
+<li>Does one design improve most of the region but sacrifice a small
+corner?</li>
+<li>Does G-optimality reduce the worst-case tail at the cost of average
+variance?</li>
+<li>Does the D-optimal design have a long high-variance tail?</li>
+<li>Are differences meaningful relative to experimental noise and
+cost?</li>
+</ul>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vi--variance-dispersion-graphs">Part VI. Variance Dispersion Graphs<a class="anchor" aria-label="anchor" href="#part-vi--variance-dispersion-graphs"></a>
+</h2>
+<div class="section level3">
+<h3 id="vdg-concept">25. VDG concept<a class="anchor" aria-label="anchor" href="#vdg-concept"></a>
+</h3>
+<p>VDG summarizes how prediction variance changes with radial distance
+from a center in the independent-coordinate representation.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span></span>
+<span>  <span class="va">ev_I</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"vdg"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This is particularly useful for assessing whether the design behaves
+similarly in different directions at similar distances from the
+center.</p>
+<div class="section level4">
+<h4 id="boundary-with-rotatability">Boundary with rotatability<a class="anchor" aria-label="anchor" href="#boundary-with-rotatability"></a>
+</h4>
+<p>VDG is a prediction-variance summary. Rotatability asks whether
+prediction variance depends only on radial distance rather than
+direction under the declared coordinate system.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-vii--rotatability">Part VII. Rotatability<a class="anchor" aria-label="anchor" href="#part-vii--rotatability"></a>
+</h2>
+<div class="section level3">
+<h3 id="construct-and-assess-a-rotatable-design">26. Construct and assess a rotatable design<a class="anchor" aria-label="anchor" href="#construct-and-assess-a-rotatable-design"></a>
+</h3>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">rot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_full</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"rotatable"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">rot_diag</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_rotatability.html">mix_rotatability</a></span><span class="op">(</span></span>
+<span>  <span class="va">rot</span>,</span>
+<span>  spec <span class="op">=</span> <span class="va">sp_full</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  bins <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">20</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">rot_diag</span></span></code></pre></div>
+<p>Rotatability is assessed in the independent-coordinate system rather
+than pretending the original proportions are ordinary independent
+axes.</p>
+<div class="section level4">
+<h4 id="scientific-meaning">Scientific meaning<a class="anchor" aria-label="anchor" href="#scientific-meaning"></a>
+</h4>
+<p>Rotatability is valuable when uncertainty should depend primarily on
+distance from the center of interest and not on direction.</p>
+<p>It is not necessarily the overriding objective in a highly
+constrained region where the feasible geometry itself is
+directional.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-viii--simplex-moments">Part VIII. Simplex moments<a class="anchor" aria-label="anchor" href="#part-viii--simplex-moments"></a>
+</h2>
+<div class="section level3">
+<h3 id="exact-moments-for-a-full-simplex">27. Exact moments for a full simplex<a class="anchor" aria-label="anchor" href="#exact-moments-for-a-full-simplex"></a>
+</h3>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_moments.html">mix_moments</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_full</span>,</span>
+<span>  powers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"exact"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_moments.html">mix_moments</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_full</span>,</span>
+<span>  powers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"exact"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Moments are building blocks for integrated design criteria.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="monte-carlo-moments-for-constrained-regions">28. Monte Carlo moments for constrained regions<a class="anchor" aria-label="anchor" href="#monte-carlo-moments-for-constrained-regions"></a>
+</h3>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_moments.html">mix_moments</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  powers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"monte_carlo"</span>,</span>
+<span>  n <span class="op">=</span> <span class="fl">200000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25201</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>When numerical integration is stochastic, report <code>n</code> and
+<code>seed</code> and check Monte Carlo stability if the result affects
+a final design decision.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-ix--integrated-mean-square-error">Part IX. Integrated mean-square error<a class="anchor" aria-label="anchor" href="#part-ix--integrated-mean-square-error"></a>
+</h2>
+<div class="section level3">
+<h3 id="why-imse-is-different-from-ordinary-i-optimality">29. Why IMSE is different from ordinary I-optimality<a class="anchor" aria-label="anchor" href="#why-imse-is-different-from-ordinary-i-optimality"></a>
+</h3>
+<p>Suppose the fitted model will be quadratic, but the true response
+might contain special-cubic terms. Prediction error has two conceptual
+sources:</p>
+<ul>
+<li>variance because coefficients are estimated from finite data;</li>
+<li>bias because the fitted model omits true structure.</li>
+</ul>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">imse_D</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_imse.html">mix_imse</a></span><span class="op">(</span></span>
+<span>  design <span class="op">=</span> <span class="va">d_D</span>,</span>
+<span>  spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>  fitted_model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  true_model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">18</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">imse_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_imse.html">mix_imse</a></span><span class="op">(</span></span>
+<span>  design <span class="op">=</span> <span class="va">d_I</span>,</span>
+<span>  spec <span class="op">=</span> <span class="va">sp</span>,</span>
+<span>  fitted_model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  true_model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">18</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Compare the decomposition rather than only one total value.</p>
+<div class="section level4">
+<h4 id="interpretation-2">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-2"></a>
+</h4>
+<p>The assumed higher-order coefficients or covariance represent a
+sensitivity scenario. They are not knowledge of the true response
+surface.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-x--model-robust-design">Part X. Model-robust design<a class="anchor" aria-label="anchor" href="#part-x--model-robust-design"></a>
+</h2>
+<div class="section level3">
+<h3 id="mean-and-worst-case-objectives">30. Mean and worst-case objectives<a class="anchor" aria-label="anchor" href="#mean-and-worst-case-objectives"></a>
+</h3>
+<p><code><a href="../reference/mix_optimal_design.html">mix_optimal_design()</a></code> supports
+<code>robust = "mean"</code> and <code>robust = "worst"</code> when the
+design criterion is evaluated across declared model scenarios.</p>
+<p>The idea is to avoid a design that performs extremely well for one
+candidate model and poorly for another plausible model.</p>
+<div class="section level4">
+<h4 id="workflow-principle">Workflow principle<a class="anchor" aria-label="anchor" href="#workflow-principle"></a>
+</h4>
+<ol style="list-style-type: decimal">
+<li>define scientifically plausible candidate models before outcome
+inspection when possible;</li>
+<li>use a mean criterion if balanced average performance is
+appropriate;</li>
+<li>use a worst-case criterion if catastrophic weakness under any
+candidate model is unacceptable;</li>
+<li>evaluate the selected design under each model separately
+afterward.</li>
+</ol>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xi--bayesian-design-criteria">Part XI. Bayesian design criteria<a class="anchor" aria-label="anchor" href="#part-xi--bayesian-design-criteria"></a>
+</h2>
+<div class="section level3">
+<h3 id="prior-precision-as-information">31. Prior precision as information<a class="anchor" aria-label="anchor" href="#prior-precision-as-information"></a>
+</h3>
+<p>If the prior parameter covariance is <code>Sigma0</code>, prior
+precision is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mn>0</mn></msub><mo>=</mo><msubsup><mi mathvariant="normal">Σ</mi><mn>0</mn><mrow><mi>−</mi><mn>1</mn></mrow></msubsup><mi>.</mi></mrow><annotation encoding="application/x-tex">
+P_0=\Sigma_0^{-1}.
+</annotation></semantics></math></p>
+<p>Bayesian design criteria combine <code>P0</code> with experimental
+information.</p>
+<div class="section level4">
+<h4 id="practical-sources-of-prior-information">Practical sources of prior information<a class="anchor" aria-label="anchor" href="#practical-sources-of-prior-information"></a>
+</h4>
+<ul>
+<li>previous experiment with the same formulation system;</li>
+<li>validated historical production data;</li>
+<li>mechanistic constraints;</li>
+<li>elicited plausible coefficient scale.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="poor-source">Poor source<a class="anchor" aria-label="anchor" href="#poor-source"></a>
+</h4>
+<ul>
+<li>arbitrary diagonal precision chosen only to stabilize a nearly
+singular design.</li>
+</ul>
+<p>If stabilization is the only goal, say so explicitly and treat the
+result as a regularized design sensitivity analysis.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xii--sequential-augmentation-for-design-quality">Part XII. Sequential augmentation for design quality<a class="anchor" aria-label="anchor" href="#part-xii--sequential-augmentation-for-design-quality"></a>
+</h2>
+<div class="section level3">
+<h3 id="start-from-a-classical-design">32. Start from a classical design<a class="anchor" aria-label="anchor" href="#start-from-a-classical-design"></a>
+</h3>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="d-oriented-augmentation">D-oriented augmentation<a class="anchor" aria-label="anchor" href="#d-oriented-augmentation"></a>
+</h4>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0_D</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"D"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">18</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25301</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="i-oriented-augmentation">I-oriented augmentation<a class="anchor" aria-label="anchor" href="#i-oriented-augmentation"></a>
+</h4>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0_I</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">18</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25302</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="g-oriented-augmentation">G-oriented augmentation<a class="anchor" aria-label="anchor" href="#g-oriented-augmentation"></a>
+</h4>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d0_G</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">d0</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">18</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25303</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Compare:</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">d0</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">d0_D</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">d0_I</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">d0_G</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="boundary-with-extended-vignette-30">Boundary with Extended Vignette 30<a class="anchor" aria-label="anchor" href="#boundary-with-extended-vignette-30"></a>
+</h4>
+<p>This section treats <strong>outcome-independent design
+augmentation</strong>. Response-adaptive sequential design and
+Gaussian-process Bayesian optimization are owned by Extended Vignette
+30.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiii--a-complete-fertilizer-blend-design-comparison">Part XIII. A complete fertilizer-blend design comparison<a class="anchor" aria-label="anchor" href="#part-xiii--a-complete-fertilizer-blend-design-comparison"></a>
+</h2>
+<div class="section level3">
+<h3 id="scientific-objective">33. Scientific objective<a class="anchor" aria-label="anchor" href="#scientific-objective"></a>
+</h3>
+<p>Three formulation fractions will be studied:</p>
+<ul>
+<li>organic N source <code>O</code>;</li>
+<li>mineral N source <code>N</code>;</li>
+<li>inert/nutrient carrier <code>C</code>.</li>
+</ul>
+<p>The response is expected to be nonlinear and the final model will be
+used to optimize crop response. Therefore prediction quality is
+central.</p>
+<div class="section level4">
+<h4 id="step-1-region">Step 1: region<a class="anchor" aria-label="anchor" href="#step-1-region"></a>
+</h4>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"O"</span>, <span class="st">"N"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.10</span>, <span class="fl">0.10</span>, <span class="fl">0.10</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.70</span>, <span class="fl">0.70</span>, <span class="fl">0.70</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-2-baseline-classical-design">Step 2: baseline classical design<a class="anchor" aria-label="anchor" href="#step-2-baseline-classical-design"></a>
+</h4>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">base</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design.html">mix_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_f</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"extreme_vertices"</span>,</span>
+<span>  include_centroid <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  edge_midpoints <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-3-competing-optimal-designs">Step 3: competing optimal designs<a class="anchor" aria-label="anchor" href="#step-3-competing-optimal-designs"></a>
+</h4>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Ddes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_f</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"D"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25401</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Ides</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_f</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25401</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Gdes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_f</span>,</span>
+<span>  <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">25401</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-4-common-evaluation">Step 4: common evaluation<a class="anchor" aria-label="anchor" href="#step-4-common-evaluation"></a>
+</h4>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">E0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">base</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="va">ED</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Ddes</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="va">EI</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Ides</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="va">EG</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Gdes</span>, model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-5-inspect-fds">Step 5: inspect FDS<a class="anchor" aria-label="anchor" href="#step-5-inspect-fds"></a>
+</h4>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ED</span>, <span class="st">"fds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">EI</span>, <span class="st">"fds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">EG</span>, <span class="st">"fds"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-6-inspect-prediction-variance-maps">Step 6: inspect prediction-variance maps<a class="anchor" aria-label="anchor" href="#step-6-inspect-prediction-variance-maps"></a>
+</h4>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">ED</span>, <span class="st">"prediction_variance"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">EI</span>, <span class="st">"prediction_variance"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">EG</span>, <span class="st">"prediction_variance"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="step-7-check-conditioning">Step 7: check conditioning<a class="anchor" aria-label="anchor" href="#step-7-check-conditioning"></a>
+</h4>
+<p>Compare the reported condition measures. If one design is
+prediction-efficient but nearly singular, evaluate whether the numerical
+weakness matters for the intended interpretation.</p>
+</div>
+<div class="section level4">
+<h4 id="step-8-decide-scientifically">Step 8: decide scientifically<a class="anchor" aria-label="anchor" href="#step-8-decide-scientifically"></a>
+</h4>
+<p>If the primary scientific goal is reliable surface prediction for
+later optimization, select the design whose prediction-variance behavior
+best supports that goal, subject to estimability, practical run
+constraints, and replicate needs.</p>
+<p>Do not select D by convention if I or G better represents the study
+objective.</p>
+<hr>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xiv--stochastic-search-reproducibility">Part XIV. Stochastic-search reproducibility<a class="anchor" aria-label="anchor" href="#part-xiv--stochastic-search-reproducibility"></a>
+</h2>
+<div class="section level3">
+<h3 id="repeat-across-seeds">34. Repeat across seeds<a class="anchor" aria-label="anchor" href="#repeat-across-seeds"></a>
+</h3>
+<p>A consequential GA or hybrid design can be checked across seeds.</p>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seeds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">11</span>, <span class="fl">22</span>, <span class="fl">33</span>, <span class="fl">44</span>, <span class="fl">55</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">designs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
+<span>  <span class="va">seeds</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>      <span class="va">sp_f</span>,</span>
+<span>      <span class="st">"scheffe_quadratic"</span>,</span>
+<span>      runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>      criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>      algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>      seed <span class="op">=</span> <span class="va">s</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Evaluate each design under the same criterion and region.</p>
+<p>A stable search should return similar objective quality even if the
+exact support points differ slightly.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xv--common-mistakes">Part XV. Common mistakes<a class="anchor" aria-label="anchor" href="#part-xv--common-mistakes"></a>
+</h2>
+<div class="section level3">
+<h3 id="using-d-optimality-because-it-is-the-most-familiar">35. Using D-optimality because it is the most familiar<a class="anchor" aria-label="anchor" href="#using-d-optimality-because-it-is-the-most-familiar"></a>
+</h3>
+<p>Choose the criterion from the scientific goal.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="comparing-designs-on-different-evaluation-regions">36. Comparing designs on different evaluation regions<a class="anchor" aria-label="anchor" href="#comparing-designs-on-different-evaluation-regions"></a>
+</h3>
+<p>Use the same feasible region and model basis.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="ignoring-rank-before-efficiency">37. Ignoring rank before efficiency<a class="anchor" aria-label="anchor" href="#ignoring-rank-before-efficiency"></a>
+</h3>
+<p>A rank-deficient design cannot support ordinary estimation of the
+full intended model.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="reporting-only-the-scalar-optimality-score">38. Reporting only the scalar optimality score<a class="anchor" aria-label="anchor" href="#reporting-only-the-scalar-optimality-score"></a>
+</h3>
+<p>Also report prediction variance, FDS/VDG where relevant,
+conditioning, leverage, and the design points themselves.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="allowing-a-stochastic-search-without-a-seed">39. Allowing a stochastic search without a seed<a class="anchor" aria-label="anchor" href="#allowing-a-stochastic-search-without-a-seed"></a>
+</h3>
+<p>Record the seed and search settings.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="assuming-the-best-numerical-design-is-operationally-feasible">40. Assuming the best numerical design is operationally
+feasible<a class="anchor" aria-label="anchor" href="#assuming-the-best-numerical-design-is-operationally-feasible"></a>
+</h3>
+<p>Check run order, material-change cost, replication, whole-plot
+restrictions, and preparation feasibility. Structured experimental
+constraints are treated in Extended Vignette 27.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="using-model-robust-terminology-without-listing-the-candidate-models">41. Using model-robust terminology without listing the candidate
+models<a class="anchor" aria-label="anchor" href="#using-model-robust-terminology-without-listing-the-candidate-models"></a>
+</h3>
+<p>A robustness claim must state the uncertainty set.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="treating-a-bayesian-design-criterion-as-a-bayesian-response-analysis">42. Treating a Bayesian design criterion as a Bayesian response
+analysis<a class="anchor" aria-label="anchor" href="#treating-a-bayesian-design-criterion-as-a-bayesian-response-analysis"></a>
+</h3>
+<p>They are different layers.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="part-xvi--function-selection-guide">Part XVI. Function-selection guide<a class="anchor" aria-label="anchor" href="#part-xvi--function-selection-guide"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Goal</th>
+<th align="left">Criterion/function</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">Estimate the whole parameter vector precisely</td>
+<td align="left">D with <code><a href="../reference/mix_optimal_design.html">mix_optimal_design()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Reduce average coefficient variance</td>
+<td align="left">A</td>
+</tr>
+<tr class="odd">
+<td align="left">Predict well over the region</td>
+<td align="left">I</td>
+</tr>
+<tr class="even">
+<td align="left">Control worst-case prediction variance</td>
+<td align="left">G</td>
+</tr>
+<tr class="odd">
+<td align="left">Protect the weakest information direction</td>
+<td align="left">E</td>
+</tr>
+<tr class="even">
+<td align="left">Distinguish a base and alternative model</td>
+<td align="left">T + <code>alternative_model</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Reduce confounding with omitted terms</td>
+<td align="left">Alias + <code>alias_model</code>
+</td>
+</tr>
+<tr class="even">
+<td align="left">Incorporate prior coefficient precision</td>
+<td align="left">BayesD/BayesI + <code>prior_precision</code>
+</td>
+</tr>
+<tr class="odd">
+<td align="left">Inspect all designs consistently</td>
+<td align="left"><code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Inspect FDS</td>
+<td align="left"><code>mix_plot(type="fds")</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Inspect VDG</td>
+<td align="left"><code>mix_plot(type="vdg")</code></td>
+</tr>
+<tr class="even">
+<td align="left">Study fitted-model bias sensitivity</td>
+<td align="left"><code><a href="../reference/mix_imse.html">mix_imse()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Check rotatability</td>
+<td align="left"><code><a href="../reference/mix_rotatability.html">mix_rotatability()</a></code></td>
+</tr>
+<tr class="even">
+<td align="left">Add new design-based runs</td>
+<td align="left"><code><a href="../reference/mix_augment.html">mix_augment()</a></code></td>
+</tr>
+<tr class="odd">
+<td align="left">Do response-adaptive sequential experimentation</td>
+<td align="left">Extended Vignette 30</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="part-xvii--minimum-optimal-design-reporting-checklist">Part XVII. Minimum optimal-design reporting checklist<a class="anchor" aria-label="anchor" href="#part-xvii--minimum-optimal-design-reporting-checklist"></a>
+</h2>
+<ul class="task-list">
+<li><label><input type="checkbox">mixture region and all
+constraints;</label></li>
+<li><label><input type="checkbox">intended model basis;</label></li>
+<li><label><input type="checkbox">number of runs;</label></li>
+<li><label><input type="checkbox">whether replication was
+allowed;</label></li>
+<li><label><input type="checkbox">candidate-set
+construction;</label></li>
+<li><label><input type="checkbox">evaluation-region
+construction;</label></li>
+<li><label><input type="checkbox">optimality criterion;</label></li>
+<li><label><input type="checkbox">alternative/alias model if T/Alias
+was used;</label></li>
+<li><label><input type="checkbox">prior precision if BayesD/BayesI was
+used;</label></li>
+<li><label><input type="checkbox">mean or worst-case robustness
+rule;</label></li>
+<li><label><input type="checkbox">search algorithm;</label></li>
+<li><label><input type="checkbox">starts;</label></li>
+<li><label><input type="checkbox">exchange iteration
+limit;</label></li>
+<li><label><input type="checkbox">GA population;</label></li>
+<li><label><input type="checkbox">generations;</label></li>
+<li><label><input type="checkbox">random seed;</label></li>
+<li><label><input type="checkbox">rank;</label></li>
+<li><label><input type="checkbox">conditioning;</label></li>
+<li><label><input type="checkbox">average prediction
+variance;</label></li>
+<li><label><input type="checkbox">maximum prediction
+variance;</label></li>
+<li><label><input type="checkbox">FDS summary when prediction is
+central;</label></li>
+<li><label><input type="checkbox">VDG/rotatability when
+relevant;</label></li>
+<li><label><input type="checkbox">IMSE scenario assumptions when
+reported;</label></li>
+<li><label><input type="checkbox">final run table in original
+component units;</label></li>
+<li><label><input type="checkbox">practical preparation/randomization
+constraints;</label></li>
+<li><label><input type="checkbox">audit trail.</label></li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-a--minimal-reusable-optimal-design-script">Appendix A. Minimal reusable optimal-design script<a class="anchor" aria-label="anchor" href="#appendix-a--minimal-reusable-optimal-design-script"></a>
+</h2>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wep69.github.io/mixRSMflow/">mixRSMflow</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">od</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">15</span>,</span>
+<span>  random_candidates <span class="op">=</span> <span class="fl">2000</span>,</span>
+<span>  starts <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  max_iter <span class="op">=</span> <span class="fl">40</span>,</span>
+<span>  population <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  generations <span class="op">=</span> <span class="fl">80</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">20260813</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">od</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">E</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span></span>
+<span>  <span class="va">od</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">25</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">E</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E</span>, <span class="st">"fds"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E</span>, <span class="st">"vdg"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/mix_plot.html">mix_plot</a></span><span class="op">(</span><span class="va">E</span>, <span class="st">"prediction_variance"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/mix_audit_trail.html">mix_audit_trail</a></span><span class="op">(</span><span class="va">od</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-b--boundary-with-other-extended-vignettes">Appendix B. Boundary with other extended vignettes<a class="anchor" aria-label="anchor" href="#appendix-b--boundary-with-other-extended-vignettes"></a>
+</h2>
+<p>This vignette deliberately does not re-teach:</p>
+<ul>
+<li>how to derive or declare the feasible region, owned by 24;</li>
+<li>alternative response-model coefficient interpretation, owned by
+26;</li>
+<li>blocking, Latin squares, and split plots, owned by 27;</li>
+<li>multiresponse desirability, owned by 28;</li>
+<li>bootstrap uncertainty of the fitted optimum, owned by 29;</li>
+<li>response-adaptive Bayesian optimization, owned by 30;</li>
+<li>GLM/GLS/mixed/Bayesian response engines, owned by 31;</li>
+<li>full publication-graphics practice, owned by 32;</li>
+<li>release validation, owned by 33.</li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="final-perspective">Final perspective<a class="anchor" aria-label="anchor" href="#final-perspective"></a>
+</h2>
+<p>Optimal design does not ask, “Which algorithm is most
+sophisticated?”</p>
+<p>It asks:</p>
+<p><strong>Given this feasible region, this model, this number of runs,
+and this scientific purpose, where should observations be collected so
+that the resulting information is most useful?</strong></p>
+<p>A defensible workflow is:</p>
+<p><strong>region -&gt; model basis -&gt; scientific criterion -&gt;
+candidate/evaluation set -&gt; search -&gt; rank/conditioning -&gt;
+prediction-variance diagnostics -&gt; practical feasibility -&gt; final
+design.</strong></p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-c--advanced-optimal-design-laboratories">Appendix C. Advanced optimal-design laboratories<a class="anchor" aria-label="anchor" href="#appendix-c--advanced-optimal-design-laboratories"></a>
+</h2>
+<div class="section level3">
+<h3 id="c1--laboratory-when-d-and-i-disagree">C1. Laboratory: when D and I disagree<a class="anchor" aria-label="anchor" href="#c1--laboratory-when-d-and-i-disagree"></a>
+</h3>
+<p>Create one D-optimal and one I-optimal 10-run design on the same
+constrained region.</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sp_lab</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_spec.html">mix_spec</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.80</span>, <span class="fl">0.80</span>, <span class="fl">0.80</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Ddes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_lab</span>, <span class="st">"scheffe_quadratic"</span>, runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"D"</span>, algorithm <span class="op">=</span> <span class="st">"hybrid"</span>, seed <span class="op">=</span> <span class="fl">251001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Ides</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_lab</span>, <span class="st">"scheffe_quadratic"</span>, runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"I"</span>, algorithm <span class="op">=</span> <span class="st">"hybrid"</span>, seed <span class="op">=</span> <span class="fl">251001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ED</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Ddes</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
+<span><span class="va">EI</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Ides</span>, resolution <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="tasks">Tasks<a class="anchor" aria-label="anchor" href="#tasks"></a>
+</h4>
+<ul>
+<li>Compare rank and condition numbers.</li>
+<li>Compare average and maximum prediction variance.</li>
+<li>Plot both FDS curves.</li>
+<li>Identify which design is preferable if the study aims to estimate
+coefficients.</li>
+<li>Identify which is preferable if the study aims to optimize the
+surface by prediction.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="lesson">Lesson<a class="anchor" aria-label="anchor" href="#lesson"></a>
+</h4>
+<p>The same scientific region can have different “optimal” designs
+because optimality is conditional on the criterion.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c2--laboratory-algorithm-stability-across-seeds">C2. Laboratory: algorithm stability across seeds<a class="anchor" aria-label="anchor" href="#c2--laboratory-algorithm-stability-across-seeds"></a>
+</h3>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seeds</span> <span class="op">&lt;-</span> <span class="fl">101</span><span class="op">:</span><span class="fl">110</span></span>
+<span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
+<span>  <span class="va">seeds</span>,</span>
+<span>  <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>      <span class="va">sp_lab</span>,</span>
+<span>      <span class="st">"scheffe_quadratic"</span>,</span>
+<span>      runs <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>      criterion <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>      algorithm <span class="op">=</span> <span class="st">"ga"</span>,</span>
+<span>      population <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>      generations <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>      seed <span class="op">=</span> <span class="va">s</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>For every design, compute <code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code> and
+summarize the I-oriented quality metric and condition number.</p>
+<div class="section level4">
+<h4 id="interpretation-3">Interpretation<a class="anchor" aria-label="anchor" href="#interpretation-3"></a>
+</h4>
+<p>If objective quality varies widely by seed, increase population,
+generations, starts, or use hybrid refinement. If exact support points
+differ but objective quality remains nearly identical, the design
+problem may have several practically equivalent solutions.</p>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c3--laboratory-t-optimal-discrimination">C3. Laboratory: T-optimal discrimination<a class="anchor" aria-label="anchor" href="#c3--laboratory-t-optimal-discrimination"></a>
+</h3>
+<p>Construct a design to distinguish a quadratic from special-cubic
+model.</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tdes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_optimal_design.html">mix_optimal_design</a></span><span class="op">(</span></span>
+<span>  <span class="va">sp_lab</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  runs <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  criterion <span class="op">=</span> <span class="st">"T"</span>,</span>
+<span>  alternative_model <span class="op">=</span> <span class="st">"scheffe_special_cubic"</span>,</span>
+<span>  algorithm <span class="op">=</span> <span class="st">"hybrid"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">252001</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="questions">Questions<a class="anchor" aria-label="anchor" href="#questions"></a>
+</h4>
+<ul>
+<li>Where are the selected points concentrated?</li>
+<li>Why might a T-optimal design look different from a D-optimal
+quadratic design?</li>
+<li>What scientific hypothesis does the alternative model
+represent?</li>
+<li>Why is “T-optimal” incomplete without the alternative model
+definition?</li>
+</ul>
+<hr>
+</div>
+</div>
+<div class="section level3">
+<h3 id="c4--laboratory-design-augmentation-after-run-loss">C4. Laboratory: design augmentation after run loss<a class="anchor" aria-label="anchor" href="#c4--laboratory-design-augmentation-after-run-loss"></a>
+</h3>
+<p>Suppose two planned formulations were lost during preparation. Remove
+them from the design and evaluate rank and prediction variance. Then
+restore three runs with <code><a href="../reference/mix_augment.html">mix_augment()</a></code>.</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Dlost</span> <span class="op">&lt;-</span> <span class="va">Ides</span></span>
+<span><span class="va">Dlost</span><span class="op">$</span><span class="va">data</span> <span class="op">&lt;-</span> <span class="va">Dlost</span><span class="op">$</span><span class="va">data</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">7</span><span class="op">)</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">Elost</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Dlost</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Drepair</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_augment.html">mix_augment</a></span><span class="op">(</span></span>
+<span>  <span class="va">Dlost</span>,</span>
+<span>  n_new <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">"scheffe_quadratic"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">253001</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Erepair</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/mix_design_eval.html">mix_design_eval</a></span><span class="op">(</span><span class="va">Drepair</span><span class="op">)</span></span></code></pre></div>
+<p>Explain why augmentation can be preferable to recreating the original
+run list exactly.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-d--optimal-design-troubleshooting-matrix">Appendix D. Optimal-design troubleshooting matrix<a class="anchor" aria-label="anchor" href="#appendix-d--optimal-design-troubleshooting-matrix"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Symptom</th>
+<th align="left">Likely issue</th>
+<th align="left">Recommended check</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">objective is <code>Inf</code>/undefined</td>
+<td align="left">rank deficiency</td>
+<td align="left">inspect model matrix and candidate coverage</td>
+</tr>
+<tr class="even">
+<td align="left">GA returns different designs each run</td>
+<td align="left">stochastic search</td>
+<td align="left">set seed and compare repeated seeds</td>
+</tr>
+<tr class="odd">
+<td align="left">hybrid does not improve GA design</td>
+<td align="left">local optimum already reached or iteration limit</td>
+<td align="left">increase starts/max_iter only if scientifically
+warranted</td>
+</tr>
+<tr class="even">
+<td align="left">D design predicts poorly in interior</td>
+<td align="left">criterion mismatch</td>
+<td align="left">evaluate I/G/FDS rather than assuming D is enough</td>
+</tr>
+<tr class="odd">
+<td align="left">I design has unstable coefficients</td>
+<td align="left">conditioning weakness</td>
+<td align="left">inspect condition number/eigenvalues</td>
+</tr>
+<tr class="even">
+<td align="left">many replicated support points</td>
+<td align="left">criterion favors replication</td>
+<td align="left">decide whether pure error and coverage remain
+adequate</td>
+</tr>
+<tr class="odd">
+<td align="left">T-optimal design seems strange</td>
+<td align="left">discrimination target drives support</td>
+<td align="left">inspect base and alternative basis difference</td>
+</tr>
+<tr class="even">
+<td align="left">VDG looks anisotropic</td>
+<td align="left">design not rotatable or constraints directional</td>
+<td align="left">interpret relative to feasible geometry</td>
+</tr>
+<tr class="odd">
+<td align="left">IMSE dominated by bias</td>
+<td align="left">fitted model too simple under scenario</td>
+<td align="left">reconsider model/design relationship</td>
+</tr>
+<tr class="even">
+<td align="left">design impossible to randomize</td>
+<td align="left">operational restriction absent from optimization</td>
+<td align="left">move to structured-design workflow in Vignette 27</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-e--guided-design-exercises">Appendix E. Guided design exercises<a class="anchor" aria-label="anchor" href="#appendix-e--guided-design-exercises"></a>
+</h2>
+<div class="section level4">
+<h4 id="exercise-1--criterion-matching">Exercise 1. Criterion matching<a class="anchor" aria-label="anchor" href="#exercise-1--criterion-matching"></a>
+</h4>
+<p>For each objective—coefficient estimation, average prediction,
+worst-case prediction, model discrimination—choose a primary optimality
+criterion and justify it in one paragraph.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-2--run-count-sensitivity">Exercise 2. Run-count sensitivity<a class="anchor" aria-label="anchor" href="#exercise-2--run-count-sensitivity"></a>
+</h4>
+<p>Generate I-optimal designs with 8, 10, 12, and 16 runs. Plot FDS
+curves. Identify the point at which additional runs produce diminishing
+prediction-variance improvement.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-3--replication-policy">Exercise 3. Replication policy<a class="anchor" aria-label="anchor" href="#exercise-3--replication-policy"></a>
+</h4>
+<p>Compare <code>allow_replicates = TRUE</code> and <code>FALSE</code>.
+Discuss pure-error estimation, region coverage, and operational
+repeatability.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-4--candidate-density">Exercise 4. Candidate density<a class="anchor" aria-label="anchor" href="#exercise-4--candidate-density"></a>
+</h4>
+<p>Repeat an optimal-design search with different
+<code>resolution</code> and <code>random_candidates</code>. Determine
+whether the selected support and objective quality stabilize.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-5--worst-case-robustness">Exercise 5. Worst-case robustness<a class="anchor" aria-label="anchor" href="#exercise-5--worst-case-robustness"></a>
+</h4>
+<p>Construct two plausible model scenarios and compare
+<code>robust = "mean"</code> with <code>robust = "worst"</code>. Explain
+which strategy is more conservative.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-6--prior-precision">Exercise 6. Prior precision<a class="anchor" aria-label="anchor" href="#exercise-6--prior-precision"></a>
+</h4>
+<p>Use two Bayesian prior-precision matrices: weak and informative.
+Explain how the selected runs change and why.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-7--e-optimality">Exercise 7. E-optimality<a class="anchor" aria-label="anchor" href="#exercise-7--e-optimality"></a>
+</h4>
+<p>Create an E-optimal design and compare its smallest information
+eigenvalue with the D-optimal design.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-8--alias-criterion">Exercise 8. Alias criterion<a class="anchor" aria-label="anchor" href="#exercise-8--alias-criterion"></a>
+</h4>
+<p>Specify a quadratic fitted model and a special-cubic alias model.
+Explain which omitted terms the design seeks to separate.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-9--rotatability">Exercise 9. Rotatability<a class="anchor" aria-label="anchor" href="#exercise-9--rotatability"></a>
+</h4>
+<p>Compare a rotatable construction with an I-optimal design on a full
+simplex. Decide which is preferable for a local radial prediction
+goal.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-10--imse-scenario">Exercise 10. IMSE scenario<a class="anchor" aria-label="anchor" href="#exercise-10--imse-scenario"></a>
+</h4>
+<p>Increase the assumed omitted-term magnitude in
+<code><a href="../reference/mix_imse.html">mix_imse()</a></code>. Explain how bias begins to dominate
+variance.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-11--lost-run-repair">Exercise 11. Lost-run repair<a class="anchor" aria-label="anchor" href="#exercise-11--lost-run-repair"></a>
+</h4>
+<p>Delete one vertex and one interior point from a design. Which lost
+point damages prediction more? Use <code><a href="../reference/mix_design_eval.html">mix_design_eval()</a></code> to
+support the answer.</p>
+</div>
+<div class="section level4">
+<h4 id="exercise-12--reviewer-exercise">Exercise 12. Reviewer exercise<a class="anchor" aria-label="anchor" href="#exercise-12--reviewer-exercise"></a>
+</h4>
+<p>A manuscript states “a D-optimal design was generated” with no model,
+candidate set, run count, or algorithm. Draft the minimum information
+required to reproduce the design.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-f--reviewer-style-optimal-design-audit">Appendix F. Reviewer-style optimal-design audit<a class="anchor" aria-label="anchor" href="#appendix-f--reviewer-style-optimal-design-audit"></a>
+</h2>
+<p>A reproducible optimal-design methods section should permit a
+reviewer to reconstruct:</p>
+<ol style="list-style-type: decimal">
+<li>the feasible mixture region;</li>
+<li>the intended model basis;</li>
+<li>the run budget;</li>
+<li>the optimality criterion;</li>
+<li>the candidate set;</li>
+<li>the evaluation set;</li>
+<li>whether replicates were allowed;</li>
+<li>the algorithm and its settings;</li>
+<li>all random seeds;</li>
+<li>robust model scenarios, if any;</li>
+<li>prior precision, if any;</li>
+<li>the selected run table;</li>
+<li>rank/conditioning diagnostics;</li>
+<li>prediction-variance diagnostics;</li>
+<li>any operational modification after algorithmic selection.</li>
+</ol>
+<p>A design described only by its criterion name is not
+reproducible.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="appendix-g--interpretation-language-templates">Appendix G. Interpretation language templates<a class="anchor" aria-label="anchor" href="#appendix-g--interpretation-language-templates"></a>
+</h2>
+<div class="section level4">
+<h4 id="d-oriented-design">D-oriented design<a class="anchor" aria-label="anchor" href="#d-oriented-design"></a>
+</h4>
+<blockquote>
+<p>The design was selected to maximize information for the full
+coefficient vector under the declared quadratic mixture basis.
+Prediction-variance diagnostics were examined separately because
+D-optimality was not interpreted as a universal prediction
+criterion.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="i-oriented-design">I-oriented design<a class="anchor" aria-label="anchor" href="#i-oriented-design"></a>
+</h4>
+<blockquote>
+<p>The primary design objective was to reduce average model-based
+prediction variance over the feasible mixture region, consistent with
+the subsequent response-surface optimization goal.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="g-oriented-design">G-oriented design<a class="anchor" aria-label="anchor" href="#g-oriented-design"></a>
+</h4>
+<blockquote>
+<p>The design emphasized control of the largest prediction variance over
+the evaluation region, providing protection against poorly estimated
+subregions.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="gahybrid-search">GA/hybrid search<a class="anchor" aria-label="anchor" href="#gahybrid-search"></a>
+</h4>
+<blockquote>
+<p>Because the constrained design space was irregular, the
+optimal-design search used a stochastic genetic stage followed by local
+exchange refinement. The random seed and search settings were fixed and
+reported, and solution stability was checked across repeated starts.</p>
+</blockquote>
+</div>
+<div class="section level4">
+<h4 id="model-discrimination">Model discrimination<a class="anchor" aria-label="anchor" href="#model-discrimination"></a>
+</h4>
+<blockquote>
+<p>The T-oriented design was constructed specifically to distinguish the
+quadratic base model from the declared special-cubic alternative;
+therefore its support should not be interpreted as a general-purpose
+optimal design independent of the competing models.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-h--applied-design-case-bank">Appendix H. Applied design case bank<a class="anchor" aria-label="anchor" href="#appendix-h--applied-design-case-bank"></a>
+</h2>
+<div class="section level3">
+<h3 id="h1--i-optimal-formulation-development">H1. I-optimal formulation development<a class="anchor" aria-label="anchor" href="#h1--i-optimal-formulation-development"></a>
+</h3>
+<p>A substrate experiment will ultimately be used to predict response
+throughout a constrained region and then locate a high-performing blend.
+This goal is more closely aligned with average prediction precision than
+with coefficient-ellipsoid volume. An I-oriented design should therefore
+be a serious candidate. The final decision should still inspect rank,
+conditioning, FDS, and maximum prediction variance. If a D-optimal
+design has slightly better coefficient precision but a substantially
+worse prediction-variance distribution, the I design may be more
+consistent with the scientific purpose.</p>
+</div>
+<div class="section level3">
+<h3 id="h2--g-optimal-safety-envelope">H2. G-optimal safety envelope<a class="anchor" aria-label="anchor" href="#h2--g-optimal-safety-envelope"></a>
+</h3>
+<p>A formulation must remain below a phytotoxicity threshold everywhere
+in the admissible region. The study needs reliable predictions even in
+the least-supported subregion. A G-oriented design is attractive because
+the worst-case prediction variance matters directly. The report should
+state that worst-case control, rather than average parameter precision,
+motivated the criterion. If the G design is operationally expensive,
+compare its maximum prediction variance with a simpler design before
+accepting the extra complexity.</p>
+</div>
+<div class="section level3">
+<h3 id="h3--t-optimal-curvature-discrimination">H3. T-optimal curvature discrimination<a class="anchor" aria-label="anchor" href="#h3--t-optimal-curvature-discrimination"></a>
+</h3>
+<p>A previous experiment suggests a quadratic model, but scientists
+suspect a three-way blend interaction. A T-oriented design can place
+runs where the quadratic and special-cubic model spaces differ most. The
+design is not “better” in a universal sense; it is better for the
+declared discrimination task. After data are collected, model adequacy
+and scientific interpretation must still be assessed independently.</p>
+</div>
+<div class="section level3">
+<h3 id="h4--bayesian-design-using-historical-information">H4. Bayesian design using historical information<a class="anchor" aria-label="anchor" href="#h4--bayesian-design-using-historical-information"></a>
+</h3>
+<p>A production line has historical coefficient estimates from a
+previous formulation version. If those estimates are scientifically
+transferable, they can be translated into a prior precision matrix for
+BayesD or BayesI design. The historical information may reduce the need
+to spend new runs estimating already well-known directions. Sensitivity
+to weaker prior precision should be reported because overconfident
+historical information can make the new design too narrow.</p>
+</div>
+<div class="section level3">
+<h3 id="h5--model-robust-design-under-uncertain-curvature">H5. Model-robust design under uncertain curvature<a class="anchor" aria-label="anchor" href="#h5--model-robust-design-under-uncertain-curvature"></a>
+</h3>
+<p>A new crop formulation has little prior response information. Both
+quadratic and special-cubic behavior are plausible. A robust design can
+seek acceptable performance across both model scenarios instead of
+optimizing for one. A worst-case criterion is conservative; a mean
+criterion balances scenarios. The uncertainty set must be stated
+explicitly. “Robust” without listing candidate models is not
+reproducible.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="appendix-i--short-answer-optimal-design-review">Appendix I. Short-answer optimal-design review<a class="anchor" aria-label="anchor" href="#appendix-i--short-answer-optimal-design-review"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Why is D not always best?</strong> Because D optimizes
+coefficient information, not necessarily regional prediction.</li>
+<li>
+<strong>What does I emphasize?</strong> Average prediction variance
+over the evaluation region.</li>
+<li>
+<strong>What does G emphasize?</strong> Maximum prediction
+variance.</li>
+<li>
+<strong>Why inspect rank first?</strong> Optimality scores are
+meaningless for an unestimable intended model.</li>
+<li>
+<strong>Why use FDS?</strong> It shows the distribution of
+prediction precision across the region.</li>
+<li>
+<strong>Why repeat GA across seeds?</strong> To assess stochastic
+solution stability.</li>
+<li>
+<strong>What makes T-optimality reproducible?</strong> Stating both
+base and alternative models.</li>
+<li>
+<strong>What does a prior-precision matrix affect?</strong> The
+design criterion, not automatically the later response-analysis
+paradigm.</li>
+<li>
+<strong>When is augmentation useful?</strong> When existing runs
+should be preserved but information can be improved with additional
+points.</li>
+<li>
+<strong>What must a final design table contain?</strong> Original
+component proportions, run allocation/replication, and any structured
+experimental assignments.</li>
+</ol>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 
